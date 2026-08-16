@@ -27,10 +27,12 @@ const ReportWaste: React.FC = () => {
   // State machine: 'camera' → 'form' → 'submitting' → 'success'
   const [step, setStep] = useState<'camera' | 'form' | 'submitting' | 'success'>('camera');
 
-  // Camera
+  // Camera & File input
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [flashActive, setFlashActive] = useState(false);
@@ -74,9 +76,9 @@ const ReportWaste: React.FC = () => {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       if (msg.includes('NotAllowed') || msg.includes('Permission')) {
-        setCameraError('Camera permission denied. Please allow camera access in your browser settings to report waste.');
+        setCameraError('Camera permission denied. Please allow camera access or choose an image from gallery.');
       } else if (msg.includes('NotFound')) {
-        setCameraError('No camera found on this device. A camera is required to report waste.');
+        setCameraError('No camera found on this device. You can choose an image from your gallery.');
       } else {
         setCameraError(`Camera error: ${msg}`);
       }
@@ -98,9 +100,11 @@ const ReportWaste: React.FC = () => {
     }
     navigator.geolocation.getCurrentPosition(
       pos => setGeoCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      err => setGeoError(`Location error: ${err.message}. Please enable location services.`),
+      err => setGeoError(`Location error: ${err.message}. Defaulting to Dharampeth Ward coordinates.`),
       { enableHighAccuracy: true, timeout: 15000 }
     );
+    // Default fallback coordinates if user denies or timeout
+    setGeoCoords({ lat: 21.1458, lng: 79.0882 });
   }, []);
 
   // Start camera on mount
@@ -120,14 +124,31 @@ const ReportWaste: React.FC = () => {
     return () => clearInterval(timer);
   }, [isRecordingVoice]);
 
-  // ---- Capture photo + AI scan simulation ----
+  // Run simulated AI Vision Classifier
+  const runAiDetector = useCallback(() => {
+    setIsAiScanning(true);
+    setTimeout(() => {
+      setIsAiScanning(false);
+      const aiResults: AiDetection[] = [
+        { label: 'Plastic Packaging Waste', confidence: 96, suggestedCategory: 'dry' },
+        { label: 'Organic Food Waste', confidence: 92, suggestedCategory: 'wet' },
+        { label: 'Electronic Debris', confidence: 89, suggestedCategory: 'e-waste' },
+        { label: 'Cardboard & Paper Waste', confidence: 94, suggestedCategory: 'dry' },
+      ];
+      const picked = aiResults[Math.floor(Math.random() * aiResults.length)];
+      setAiDetection(picked);
+      setWasteType(picked.suggestedCategory);
+    }, 1200);
+  }, []);
+
+  // ---- Capture photo via camera ----
   const capturePhoto = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas) return;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -141,20 +162,24 @@ const ReportWaste: React.FC = () => {
 
     stopCamera();
     setStep('form');
+    runAiDetector();
+  };
 
-    // Trigger simulated AI Vision Classifier
-    setIsAiScanning(true);
-    setTimeout(() => {
-      setIsAiScanning(false);
-      const aiResults: AiDetection[] = [
-        { label: 'Plastic Packaging Waste', confidence: 96, suggestedCategory: 'dry' },
-        { label: 'Organic Food Waste', confidence: 92, suggestedCategory: 'wet' },
-        { label: 'Electronic Debris', confidence: 89, suggestedCategory: 'e-waste' },
-      ];
-      const picked = aiResults[Math.floor(Math.random() * aiResults.length)];
-      setAiDetection(picked);
-      setWasteType(picked.suggestedCategory);
-    }, 1500);
+  // ---- Select photo from gallery ----
+  const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      if (evt.target?.result) {
+        setCapturedImage(evt.target.result as string);
+        stopCamera();
+        setStep('form');
+        runAiDetector();
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   // ---- Voice Note Recording Controls ----
@@ -197,11 +222,25 @@ const ReportWaste: React.FC = () => {
     setIsRecordingVoice(false);
   };
 
-  // ---- Retake ----
+  // ---- Retake / Cancel Flow ----
   const retake = () => {
     setCapturedImage(null);
     setAiDetection(null);
     setAudioUrl(null);
+    setStep('camera');
+    startCamera();
+  };
+
+  const handleCancel = () => {
+    stopCamera();
+    stopVoiceRecording();
+    setCapturedImage(null);
+    setAiDetection(null);
+    setAudioUrl(null);
+    setWasteType('wet');
+    setSeverity(3);
+    setDescription('');
+    setSubmitError(null);
     setStep('camera');
     startCamera();
   };
@@ -258,21 +297,40 @@ const ReportWaste: React.FC = () => {
   if (step === 'camera') {
     return (
       <div className="citizen-fade-in space-y-6 max-w-4xl mx-auto">
-        <div>
-          <h2 className="text-2xl font-bold text-white">📸 Live Camera Waste Capture</h2>
-          <p className="text-slate-400 text-sm mt-1">Capture a photo of the garbage site. AI waste detector &amp; GPS coordinates will be attached automatically.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white">📸 Report Waste &amp; Grievance</h2>
+            <p className="text-slate-400 text-sm mt-1">Capture via camera or upload from gallery. AI detector &amp; GPS coordinates will be attached.</p>
+          </div>
+
+          <button
+            onClick={handleCancel}
+            className="px-4 py-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors self-start sm:self-auto"
+          >
+            ❌ Reset / Cancel
+          </button>
         </div>
 
         {cameraError ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-3xl p-8 text-center">
-            <div className="text-5xl mb-4">📵</div>
-            <p className="text-red-400 text-base font-semibold">{cameraError}</p>
-            <button
-              onClick={startCamera}
-              className="mt-5 px-6 py-2.5 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl text-sm font-bold hover:bg-red-500/30 transition-colors"
-            >
-              Retry Camera Connection
-            </button>
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-4">
+            <div className="text-5xl">📷</div>
+            <p className="text-slate-300 text-sm font-medium max-w-md mx-auto">{cameraError}</p>
+            
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                onClick={startCamera}
+                className="px-5 py-2.5 bg-sky-500/20 border border-sky-500/40 text-sky-400 rounded-xl text-xs font-bold hover:bg-sky-500/30 transition-colors"
+              >
+                🔄 Retry Camera
+              </button>
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-5 py-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded-xl text-xs font-bold hover:bg-emerald-500/30 transition-colors flex items-center gap-2"
+              >
+                <span>🖼️</span> Select from Gallery
+              </button>
+            </div>
           </div>
         ) : (
           <div className="citizen-camera-viewfinder relative bg-black rounded-3xl overflow-hidden aspect-[16/9] max-h-[500px] shadow-2xl border border-slate-800">
@@ -297,27 +355,54 @@ const ReportWaste: React.FC = () => {
           </div>
         )}
 
-        {/* Geo Error */}
+        {/* Geo Warning if applicable */}
         {geoError && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-amber-400 text-sm font-medium">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-amber-400 text-xs font-medium">
             ⚠️ {geoError}
           </div>
         )}
 
-        {/* Capture Button */}
-        {!cameraError && (
-          <div className="flex flex-col items-center gap-2">
-            <button
-              onClick={capturePhoto}
-              disabled={!geoCoords}
-              className="w-20 h-20 rounded-full bg-white border-4 border-sky-400 shadow-xl shadow-sky-400/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-              title={!geoCoords ? 'Waiting for GPS location...' : 'Capture photo'}
-            >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-sky-400 to-cyan-500" />
-            </button>
-            <span className="text-xs text-slate-400 font-medium">Tap to Snap Photo &amp; Run AI Detector</span>
-          </div>
-        )}
+        {/* Action Controls: Camera Snap + Select from Gallery */}
+        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-around gap-6">
+          {/* Gallery Upload Option */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs font-bold rounded-2xl flex items-center justify-center gap-2.5 transition-transform hover:scale-[1.03] active:scale-[0.98]"
+          >
+            <span className="text-xl">🖼️</span> Choose from Gallery
+          </button>
+
+          {/* Hidden File Input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleGallerySelect}
+            className="hidden"
+          />
+
+          {/* Center Camera Capture Button */}
+          {!cameraError && (
+            <div className="flex flex-col items-center gap-1.5">
+              <button
+                onClick={capturePhoto}
+                className="w-20 h-20 rounded-full bg-white border-4 border-sky-400 shadow-xl shadow-sky-400/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                title="Capture Photo"
+              >
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-sky-400 to-cyan-500" />
+              </button>
+              <span className="text-[11px] text-slate-400 font-semibold">Live Camera Snap</span>
+            </div>
+          )}
+
+          {/* Cancel Button */}
+          <button
+            onClick={handleCancel}
+            className="w-full sm:w-auto px-6 py-3.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-2xl flex items-center justify-center gap-2 transition-transform hover:scale-[1.03] active:scale-[0.98]"
+          >
+            <span>❌</span> Cancel
+          </button>
+        </div>
 
         <canvas ref={canvasRef} className="hidden" />
       </div>
@@ -355,9 +440,18 @@ const ReportWaste: React.FC = () => {
   // ====== FORM VIEW (+ SUBMITTING) ======
   return (
     <div className="citizen-fade-in space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h2 className="text-2xl font-bold text-white">📝 Review &amp; Submit Waste Report</h2>
-        <p className="text-slate-400 text-sm mt-1">Review captured image, AI classification findings, and add audio notes.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-white">📝 Review &amp; Submit Waste Report</h2>
+          <p className="text-slate-400 text-sm mt-1">Review captured image, AI classification findings, and add optional voice note.</p>
+        </div>
+
+        <button
+          onClick={handleCancel}
+          className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors self-start sm:self-auto"
+        >
+          ❌ Cancel Report
+        </button>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -378,12 +472,20 @@ const ReportWaste: React.FC = () => {
                 </div>
               )}
 
-              <button
-                onClick={retake}
-                className="absolute top-4 right-4 bg-black/75 backdrop-blur-md border border-slate-700 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-black transition-colors"
-              >
-                🔄 Retake Photo
-              </button>
+              <div className="absolute top-4 right-4 flex items-center gap-2">
+                <button
+                  onClick={retake}
+                  className="bg-black/75 backdrop-blur-md border border-slate-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-black transition-colors"
+                >
+                  🔄 Retake
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-black/75 backdrop-blur-md border border-slate-700 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-xl hover:bg-black transition-colors"
+                >
+                  🖼️ Gallery
+                </button>
+              </div>
 
               {geoCoords && (
                 <div className="absolute bottom-4 left-4 bg-black/75 backdrop-blur-md rounded-xl px-4 py-2 text-xs text-emerald-400 font-mono border border-emerald-500/30">
@@ -392,6 +494,15 @@ const ReportWaste: React.FC = () => {
               )}
             </div>
           )}
+
+          {/* Hidden File Input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleGallerySelect}
+            className="hidden"
+          />
 
           {/* AI Result Card */}
           {aiDetection && !isAiScanning && (
@@ -517,23 +628,32 @@ const ReportWaste: React.FC = () => {
             </div>
           )}
 
-          {/* Submit Button */}
-          <button
-            onClick={handleSubmit}
-            disabled={step === 'submitting' || !geoCoords || !capturedImage}
-            className="w-full py-4 bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-400 text-slate-950 font-black rounded-2xl text-base shadow-xl shadow-sky-500/20 flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-          >
-            {step === 'submitting' ? (
-              <>
-                <div className="w-5 h-5 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
-                Submitting Ticket…
-              </>
-            ) : (
-              <>
-                <span>📤</span> Submit Waste Report
-              </>
-            )}
-          </button>
+          {/* Submit and Cancel Buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleCancel}
+              className="py-4 px-6 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold rounded-2xl text-sm transition-colors"
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={handleSubmit}
+              disabled={step === 'submitting' || !geoCoords || !capturedImage}
+              className="flex-1 py-4 bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-400 text-slate-950 font-black rounded-2xl text-base shadow-xl shadow-sky-500/20 flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+            >
+              {step === 'submitting' ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
+                  Submitting Ticket…
+                </>
+              ) : (
+                <>
+                  <span>📤</span> Submit Waste Report
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
