@@ -39,38 +39,37 @@ const WeeklySchedule: React.FC = () => {
   const todayIndex = schedule.findIndex(s => s.is_today);
 
   return (
-    <div className="citizen-fade-in space-y-5 pb-4">
-      <div className="px-1">
-        <h2 className="text-xl font-bold text-white">📅 Weekly Pickup Schedule</h2>
-        <p className="text-slate-400 text-sm mt-1">Your ward's garbage collection timetable.</p>
+    <div className="citizen-fade-in space-y-6 max-w-6xl mx-auto pb-6">
+      <div>
+        <h2 className="text-2xl font-bold text-white">📅 Weekly Pickup Timetable</h2>
+        <p className="text-slate-400 text-sm mt-1">Official municipal garbage collection schedule for Dharampeth Ward 14.</p>
       </div>
 
-      {/* Today's Highlight */}
+      {/* Today's Highlight Banner */}
       {todayIndex >= 0 && (
-        <div className={`citizen-today-ring citizen-slide-up rounded-2xl p-5 ${wasteTypeConfig[schedule[todayIndex].waste_type]?.bg || 'bg-slate-800/40'} border ${wasteTypeConfig[schedule[todayIndex].waste_type]?.border || 'border-slate-700/30'}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-sky-400 mb-1">
-                Today — {schedule[todayIndex].day}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-3xl">{wasteTypeConfig[schedule[todayIndex].waste_type]?.icon || '🗑️'}</span>
-                <div>
-                  <div className="text-lg font-bold text-white capitalize">{schedule[todayIndex].waste_type} Waste</div>
-                  <div className="text-sm text-slate-400">{schedule[todayIndex].time_window}</div>
-                </div>
+        <div className={`citizen-today-ring citizen-slide-up rounded-3xl p-6 md:p-8 ${wasteTypeConfig[schedule[todayIndex].waste_type]?.bg || 'bg-slate-800/40'} border ${wasteTypeConfig[schedule[todayIndex].waste_type]?.border || 'border-slate-700/30'} flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl`}>
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-sky-400 mb-2">
+              📍 Today's Collection Day — {schedule[todayIndex].day}
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-5xl">{wasteTypeConfig[schedule[todayIndex].waste_type]?.icon || '🗑️'}</span>
+              <div>
+                <div className="text-2xl font-black text-white capitalize">{schedule[todayIndex].waste_type} Waste Collection</div>
+                <div className="text-base text-slate-300 font-medium mt-0.5">Time Window: {schedule[todayIndex].time_window}</div>
               </div>
             </div>
-            <div className="text-right">
-              <div className="text-xs text-slate-400 mb-1">{schedule[todayIndex].truck_id}</div>
-              <div className="text-xs text-slate-500">{schedule[todayIndex].zone}</div>
-            </div>
+          </div>
+          <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 text-right self-start md:self-auto min-w-[200px]">
+            <div className="text-xs text-slate-400">Assigned Vehicle</div>
+            <div className="text-lg font-bold text-sky-400 font-mono mt-0.5">{schedule[todayIndex].truck_id}</div>
+            <div className="text-xs text-slate-500 mt-1">{schedule[todayIndex].zone}</div>
           </div>
         </div>
       )}
 
-      {/* Full Week */}
-      <div className="space-y-2 citizen-stagger">
+      {/* Full Week Cards Grid */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 citizen-stagger">
         {schedule.map((day, idx) => {
           const conf = wasteTypeConfig[day.waste_type] || wasteTypeConfig['—'];
           const isToday = idx === todayIndex;
@@ -80,50 +79,49 @@ const WeeklySchedule: React.FC = () => {
             <div
               key={day.day}
               className={`
-                rounded-xl p-4 border transition-all citizen-card-lift
+                rounded-2xl p-5 border transition-all citizen-card-lift flex flex-col justify-between
                 ${isToday
-                  ? `${conf.bg} ${conf.border} ring-1 ring-sky-400/30`
+                  ? `${conf.bg} ${conf.border} ring-2 ring-sky-400/40 shadow-lg shadow-sky-500/10`
                   : isPast
-                    ? 'bg-slate-800/30 border-slate-800/40 opacity-60'
-                    : `bg-slate-800/50 border-slate-700/40 hover:border-slate-600/60`
+                    ? 'bg-slate-900/40 border-slate-800/40 opacity-60'
+                    : `bg-slate-900/70 border-slate-800 hover:border-slate-700`
                 }
               `}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl ${conf.bg} ${conf.border} border flex items-center justify-center text-lg`}>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-bold text-base ${isToday ? 'text-white' : 'text-slate-200'}`}>
+                      {day.day}
+                    </span>
+                    {isToday && (
+                      <span className="text-[10px] font-extrabold bg-sky-500/20 text-sky-400 px-2.5 py-0.5 rounded-full uppercase tracking-wider border border-sky-500/30">
+                        Today
+                      </span>
+                    )}
+                    {isPast && (
+                      <span className="text-[10px] font-bold bg-slate-800 text-slate-500 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Done
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-slate-500 font-mono">{day.date}</span>
+                </div>
+
+                <div className="flex items-center gap-3 my-2">
+                  <div className={`w-12 h-12 rounded-2xl ${conf.bg} ${conf.border} border flex items-center justify-center text-2xl`}>
                     {conf.icon}
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className={`font-semibold ${isToday ? 'text-white' : 'text-slate-300'}`}>
-                        {day.day}
-                      </span>
-                      {isToday && (
-                        <span className="text-[10px] font-bold bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          Today
-                        </span>
-                      )}
-                      {isPast && (
-                        <span className="text-[10px] font-bold bg-slate-700/50 text-slate-500 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          Done
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-500">{day.date}</div>
+                    <div className={`text-base font-extrabold capitalize ${conf.color}`}>{day.waste_type} Waste</div>
+                    <div className="text-xs text-slate-400 font-medium">{day.time_window}</div>
                   </div>
-                </div>
-
-                <div className="text-right">
-                  <div className={`text-sm font-medium capitalize ${conf.color}`}>{day.waste_type}</div>
-                  <div className="text-xs text-slate-500">{day.time_window}</div>
                 </div>
               </div>
 
-              {/* Expanded details for upcoming days */}
               {!isPast && day.waste_type !== '—' && (
-                <div className="mt-3 pt-3 border-t border-slate-700/30 flex items-center justify-between text-xs text-slate-500">
-                  <span>🚛 {day.truck_id}</span>
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                  <span className="font-mono">🚛 {day.truck_id}</span>
                   <span>📍 {day.zone}</span>
                 </div>
               )}
@@ -132,12 +130,11 @@ const WeeklySchedule: React.FC = () => {
         })}
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-sky-500/5 border border-sky-500/15 rounded-xl p-4 flex items-start gap-3">
-        <span className="text-lg">ℹ️</span>
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Schedule is for <strong className="text-slate-300">Dharampeth Ward</strong>. Timings may vary during festivals or public holidays.
-          Contact NMC helpline <strong className="text-sky-400">1800-123-4567</strong> for changes.
+      {/* Ward Info Callout */}
+      <div className="bg-sky-500/5 border border-sky-500/15 rounded-2xl p-5 flex items-start gap-4">
+        <span className="text-2xl">ℹ️</span>
+        <p className="text-xs md:text-sm text-slate-400 leading-relaxed">
+          This schedule applies to <strong className="text-slate-200">Dharampeth Ward 14</strong>. Waste collection trucks operate 6 days a week. For missed pickups or special bulk disposal, call the NMC Control Room hotline at <strong className="text-sky-400 font-semibold">1800-123-4567</strong>.
         </p>
       </div>
     </div>

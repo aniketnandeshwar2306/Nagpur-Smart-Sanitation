@@ -171,25 +171,25 @@ const ReportWaste: React.FC = () => {
   // ====== CAMERA VIEW ======
   if (step === 'camera') {
     return (
-      <div className="citizen-fade-in space-y-4">
-        <div className="px-1">
-          <h2 className="text-xl font-bold text-white">📸 Report Waste</h2>
-          <p className="text-slate-400 text-sm mt-1">Capture a photo of the waste using your camera.</p>
+      <div className="citizen-fade-in space-y-6 max-w-4xl mx-auto">
+        <div>
+          <h2 className="text-2xl font-bold text-white">📸 Live Camera Waste Capture</h2>
+          <p className="text-slate-400 text-sm mt-1">Capture a photo of the garbage site. Live GPS coordinates will be attached automatically.</p>
         </div>
 
         {cameraError ? (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center">
-            <div className="text-4xl mb-3">📵</div>
-            <p className="text-red-400 text-sm font-medium">{cameraError}</p>
+          <div className="bg-red-500/10 border border-red-500/30 rounded-3xl p-8 text-center">
+            <div className="text-5xl mb-4">📵</div>
+            <p className="text-red-400 text-base font-semibold">{cameraError}</p>
             <button
               onClick={startCamera}
-              className="mt-4 px-5 py-2 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl text-sm font-semibold hover:bg-red-500/30 transition-colors"
+              className="mt-5 px-6 py-2.5 bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl text-sm font-bold hover:bg-red-500/30 transition-colors"
             >
-              Retry Camera
+              Retry Camera Connection
             </button>
           </div>
         ) : (
-          <div className="citizen-camera-viewfinder relative bg-black rounded-2xl overflow-hidden aspect-[4/3]">
+          <div className="citizen-camera-viewfinder relative bg-black rounded-3xl overflow-hidden aspect-[16/9] max-h-[500px] shadow-2xl border border-slate-800">
             <video
               ref={videoRef}
               autoPlay
@@ -203,8 +203,9 @@ const ReportWaste: React.FC = () => {
             )}
             {/* Geo overlay */}
             {geoCoords && (
-              <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm rounded-lg px-3 py-1.5 text-xs text-emerald-400 font-mono z-10">
-                📍 {geoCoords.lat.toFixed(4)}, {geoCoords.lng.toFixed(4)}
+              <div className="absolute bottom-4 left-4 bg-black/75 backdrop-blur-md border border-emerald-500/30 rounded-xl px-4 py-2 text-xs text-emerald-400 font-mono z-10 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                GPS: {geoCoords.lat.toFixed(5)}, {geoCoords.lng.toFixed(5)}
               </div>
             )}
           </div>
@@ -212,23 +213,23 @@ const ReportWaste: React.FC = () => {
 
         {/* Geo Error */}
         {geoError && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 text-amber-400 text-xs font-medium">
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-amber-400 text-sm font-medium">
             ⚠️ {geoError}
           </div>
         )}
 
         {/* Capture Button */}
         {!cameraError && (
-          <div className="flex justify-center">
+          <div className="flex flex-col items-center gap-2">
             <button
               onClick={capturePhoto}
               disabled={!geoCoords}
-              className="w-18 h-18 rounded-full bg-white border-4 border-sky-400 shadow-lg shadow-sky-400/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ width: 72, height: 72 }}
+              className="w-20 h-20 rounded-full bg-white border-4 border-sky-400 shadow-xl shadow-sky-400/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
               title={!geoCoords ? 'Waiting for GPS location...' : 'Capture photo'}
             >
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-sky-400 to-cyan-500" style={{ width: 56, height: 56 }} />
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-sky-400 to-cyan-500" />
             </button>
+            <span className="text-xs text-slate-400 font-medium">Tap to Snap Photo</span>
           </div>
         )}
         {!geoCoords && !geoError && (
@@ -245,24 +246,25 @@ const ReportWaste: React.FC = () => {
   // ====== SUCCESS VIEW ======
   if (step === 'success' && successInfo) {
     return (
-      <div className="citizen-fade-in-scale flex flex-col items-center justify-center py-10 space-y-6">
+      <div className="citizen-fade-in-scale flex flex-col items-center justify-center py-12">
         <div className="citizen-modal-backdrop fixed inset-0 z-40" />
-        <div className="relative z-50 bg-slate-800/90 border border-emerald-500/30 rounded-3xl p-8 max-w-sm w-full text-center citizen-fade-in-scale shadow-2xl shadow-emerald-500/10">
+        <div className="relative z-50 bg-slate-900 border border-emerald-500/30 rounded-3xl p-8 md:p-10 max-w-md w-full text-center citizen-fade-in-scale shadow-2xl shadow-emerald-500/20">
           <div className="text-6xl mb-4 citizen-count-pulse">✅</div>
           <h3 className="text-2xl font-extrabold text-white mb-2">Report Submitted!</h3>
-          <div className="bg-slate-900/80 rounded-xl p-4 mb-4 space-y-2">
-            <div className="text-xs text-slate-400 uppercase tracking-wider">Ticket ID</div>
-            <div className="text-lg font-bold text-sky-400 font-mono">{successInfo.ticket_id}</div>
+          <p className="text-xs text-slate-400 mb-6">NMC Sanitation Command Center has received your ticket.</p>
+          <div className="bg-slate-950 rounded-2xl p-4 mb-6 space-y-2 border border-slate-800">
+            <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Ticket Reference Number</div>
+            <div className="text-2xl font-black text-sky-400 font-mono tracking-wide">{successInfo.ticket_id}</div>
           </div>
-          <div className="flex items-center justify-center gap-2 text-emerald-400 font-semibold mb-6">
-            <span className="text-xl">🌿</span>
+          <div className="flex items-center justify-center gap-2 text-emerald-400 font-bold mb-6 text-lg">
+            <span className="text-2xl">🌿</span>
             +{successInfo.points} GreenPoints earned!
           </div>
           <button
             onClick={resetFlow}
-            className="w-full py-3 bg-gradient-to-r from-sky-600 to-cyan-600 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-transform"
+            className="w-full py-3.5 bg-gradient-to-r from-sky-500 to-cyan-500 text-slate-950 font-extrabold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-transform"
           >
-            Report Another
+            Report Another Issue
           </button>
         </div>
       </div>
@@ -271,117 +273,125 @@ const ReportWaste: React.FC = () => {
 
   // ====== FORM VIEW (+ SUBMITTING) ======
   return (
-    <div className="citizen-fade-in space-y-5 pb-4">
-      <div className="px-1">
-        <h2 className="text-xl font-bold text-white">📝 Describe the Waste</h2>
-        <p className="text-slate-400 text-sm mt-1">Classify and add details to your report.</p>
+    <div className="citizen-fade-in space-y-6 max-w-5xl mx-auto">
+      <div>
+        <h2 className="text-2xl font-bold text-white">📝 Review &amp; Submit Waste Report</h2>
+        <p className="text-slate-400 text-sm mt-1">Review captured image, specify waste category, and set severity level.</p>
       </div>
 
-      {/* Captured Image Preview */}
-      {capturedImage && (
-        <div className="relative rounded-2xl overflow-hidden">
-          <img src={capturedImage} alt="Captured waste" className="w-full aspect-[4/3] object-cover rounded-2xl" />
-          <button
-            onClick={retake}
-            className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-black/80 transition-colors"
-          >
-            🔄 Retake
-          </button>
-          {geoCoords && (
-            <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm rounded-lg px-3 py-1.5 text-xs text-emerald-400 font-mono">
-              📍 {geoCoords.lat.toFixed(4)}, {geoCoords.lng.toFixed(4)}
+      <div className="grid md:grid-cols-2 gap-8">
+        {/* Left Column: Image Preview */}
+        <div className="space-y-4">
+          <label className="text-sm font-semibold text-slate-300 block">Captured Photo &amp; Geotag</label>
+          {capturedImage && (
+            <div className="relative rounded-3xl overflow-hidden shadow-xl border border-slate-800 aspect-[4/3]">
+              <img src={capturedImage} alt="Captured waste" className="w-full h-full object-cover" />
+              <button
+                onClick={retake}
+                className="absolute top-4 right-4 bg-black/75 backdrop-blur-md border border-slate-700 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-black transition-colors"
+              >
+                🔄 Retake Photo
+              </button>
+              {geoCoords && (
+                <div className="absolute bottom-4 left-4 bg-black/75 backdrop-blur-md rounded-xl px-4 py-2 text-xs text-emerald-400 font-mono border border-emerald-500/30">
+                  📍 {geoCoords.lat.toFixed(5)}, {geoCoords.lng.toFixed(5)}
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
 
-      {/* Waste Type Selector */}
-      <div>
-        <label className="text-sm font-semibold text-slate-300 block mb-2">Waste Type</label>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {WASTE_TYPES.map(wt => (
-            <button
-              key={wt.value}
-              onClick={() => setWasteType(wt.value)}
-              className={`
-                p-3 rounded-xl border text-center transition-all text-sm font-medium
-                ${wasteType === wt.value
-                  ? `${wt.color} ring-2 ring-offset-1 ring-offset-slate-900 scale-[1.03]`
-                  : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:border-slate-600'}
-              `}
-            >
-              <div className="text-xl mb-1">{wt.icon}</div>
-              {wt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Severity Slider */}
-      <div>
-        <label className="text-sm font-semibold text-slate-300 block mb-2">
-          Severity: <span className={`bg-gradient-to-r ${severityColors[severity - 1]} bg-clip-text text-transparent font-extrabold`}>{severityLabels[severity - 1]}</span>
-        </label>
-        <div className="relative">
-          <input
-            type="range"
-            min={1}
-            max={5}
-            value={severity}
-            onChange={e => setSeverity(Number(e.target.value))}
-            className="w-full h-2 rounded-full appearance-none cursor-pointer"
-            style={{
-              background: `linear-gradient(to right, #22c55e, #eab308, #ef4444)`,
-            }}
-          />
-          <div className="flex justify-between text-xs text-slate-500 mt-1 px-0.5">
-            {severityLabels.map(label => (
-              <span key={label}>{label}</span>
-            ))}
+        {/* Right Column: Details Form */}
+        <div className="space-y-5 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6">
+          {/* Waste Type Selector */}
+          <div>
+            <label className="text-sm font-semibold text-slate-300 block mb-3">Waste Category</label>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+              {WASTE_TYPES.map(wt => (
+                <button
+                  key={wt.value}
+                  onClick={() => setWasteType(wt.value)}
+                  className={`
+                    p-3 rounded-2xl border text-center transition-all text-xs font-semibold
+                    ${wasteType === wt.value
+                      ? `${wt.color} ring-2 ring-offset-1 ring-offset-slate-950 scale-[1.04]`
+                      : 'bg-slate-800/60 border-slate-700/50 text-slate-400 hover:border-slate-600'}
+                  `}
+                >
+                  <div className="text-2xl mb-1">{wt.icon}</div>
+                  {wt.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Severity Slider */}
+          <div>
+            <label className="text-sm font-semibold text-slate-300 block mb-2">
+              Issue Severity: <span className={`bg-gradient-to-r ${severityColors[severity - 1]} bg-clip-text text-transparent font-extrabold`}>{severityLabels[severity - 1]}</span>
+            </label>
+            <div className="relative">
+              <input
+                type="range"
+                min={1}
+                max={5}
+                value={severity}
+                onChange={e => setSeverity(Number(e.target.value))}
+                className="w-full h-2.5 rounded-full appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #22c55e, #eab308, #ef4444)`,
+                }}
+              />
+              <div className="flex justify-between text-xs text-slate-400 mt-2 px-0.5">
+                {severityLabels.map(label => (
+                  <span key={label}>{label}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="text-sm font-semibold text-slate-300 block mb-2">
+              Additional Details <span className="text-slate-500 font-normal">(optional)</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder="Describe nearby landmarks or specific waste overflow issues…"
+              className="w-full bg-slate-800/60 border border-slate-700/50 rounded-2xl p-3.5 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
+            />
+            <div className="text-right text-xs text-slate-500 mt-1">{description.length}/500</div>
+          </div>
+
+          {/* Error */}
+          {submitError && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-xs font-medium">
+              ❌ {submitError}
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <button
+            onClick={handleSubmit}
+            disabled={step === 'submitting' || !geoCoords || !capturedImage}
+            className="w-full py-4 bg-gradient-to-r from-sky-500 via-teal-400 to-emerald-400 text-slate-950 font-black rounded-2xl text-base shadow-xl shadow-sky-500/20 flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            {step === 'submitting' ? (
+              <>
+                <div className="w-5 h-5 border-2 border-slate-950/30 border-t-slate-950 rounded-full animate-spin" />
+                Submitting Ticket…
+              </>
+            ) : (
+              <>
+                <span>📤</span> Submit Waste Report
+              </>
+            )}
+          </button>
         </div>
       </div>
-
-      {/* Description */}
-      <div>
-        <label className="text-sm font-semibold text-slate-300 block mb-2">
-          Description <span className="text-slate-500 font-normal">(optional)</span>
-        </label>
-        <textarea
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-          maxLength={500}
-          rows={3}
-          placeholder="e.g. Overflowing bin near Sitabuldi Metro entrance…"
-          className="w-full bg-slate-800/60 border border-slate-700/50 rounded-xl p-3 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/50 transition-all"
-        />
-        <div className="text-right text-xs text-slate-500 mt-1">{description.length}/500</div>
-      </div>
-
-      {/* Error */}
-      {submitError && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-xs font-medium">
-          ❌ {submitError}
-        </div>
-      )}
-
-      {/* Submit Button */}
-      <button
-        onClick={handleSubmit}
-        disabled={step === 'submitting' || !geoCoords || !capturedImage}
-        className="w-full py-4 bg-gradient-to-r from-sky-600 to-cyan-600 text-white font-bold rounded-2xl text-lg shadow-lg shadow-sky-500/25 flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-      >
-        {step === 'submitting' ? (
-          <>
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Submitting…
-          </>
-        ) : (
-          <>
-            <span>📤</span> Submit Report
-          </>
-        )}
-      </button>
 
       <canvas ref={canvasRef} className="hidden" />
     </div>
