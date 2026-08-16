@@ -12,6 +12,22 @@ export interface WasteReportPayload {
   severity?: number;
 }
 
+export interface AssignedAuthority {
+  name: string;
+  role: string;
+  phone: string;
+  email: string;
+  department: string;
+  avatar_icon: string;
+  avatar_url?: string;
+}
+
+export interface TimelineEvent {
+  status: string;
+  timestamp: string;
+  note: string;
+}
+
 export interface ReportResponse {
   ticket_id: string;
   status: 'submitted' | 'in_progress' | 'resolved';
@@ -21,6 +37,9 @@ export interface ReportResponse {
   description: string | null;
   severity: number;
   created_at: string;
+  image_url?: string;
+  assigned_authority?: AssignedAuthority;
+  timeline?: TimelineEvent[];
 }
 
 export interface ScheduleDay {
@@ -91,4 +110,4 @@ export interface SegregationData {
 }
 
 // Tab navigation
-export type CitizenTab = 'home' | 'report' | 'schedule' | 'rewards' | 'learn';
+export type CitizenTab = 'home' | 'report' | 'myReports' | 'tracker' | 'schedule' | 'rewards' | 'learn';

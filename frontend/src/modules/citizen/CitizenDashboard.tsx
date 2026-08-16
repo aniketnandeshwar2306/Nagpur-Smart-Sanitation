@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { CitizenTab } from './types/citizen.types';
 import DashboardHome from './components/DashboardHome';
 import ReportWaste from './components/ReportWaste';
+import MyComplaints from './components/MyComplaints';
 import LiveTruckTracker from './components/LiveTruckTracker';
 import WeeklySchedule from './components/WeeklySchedule';
 import RewardsPanel from './components/RewardsPanel';
@@ -18,6 +19,7 @@ export const CitizenDashboard: React.FC = () => {
   const navItems: { id: CitizenTab | 'tracker'; label: string; icon: string }[] = [
     { id: 'home', label: t.tabs.home, icon: '🏠' },
     { id: 'report', label: t.tabs.report, icon: '📸' },
+    { id: 'myReports', label: t.tabs.myReports, icon: '📋' },
     { id: 'tracker', label: t.tabs.tracker, icon: '🚛' },
     { id: 'schedule', label: t.tabs.schedule, icon: '📅' },
     { id: 'rewards', label: t.tabs.rewards, icon: '🌿' },
@@ -100,6 +102,7 @@ export const CitizenDashboard: React.FC = () => {
           />
         )}
         {activeTab === 'report' && <ReportWaste />}
+        {activeTab === 'myReports' && <MyComplaints />}
         {activeTab === 'tracker' && <LiveTruckTracker />}
         {activeTab === 'schedule' && <WeeklySchedule />}
         {activeTab === 'rewards' && <RewardsPanel />}

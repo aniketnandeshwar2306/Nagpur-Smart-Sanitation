@@ -3,7 +3,7 @@ import type { ReportResponse, RewardProfile, ScheduleDay } from '../types/citize
 import { fetchReports, fetchRewards, fetchSchedule } from '../api/citizenApi';
 
 interface DashboardHomeProps {
-  onNavigate: (tab: 'report' | 'schedule' | 'rewards' | 'learn') => void;
+  onNavigate: (tab: 'report' | 'myReports' | 'schedule' | 'rewards' | 'learn') => void;
 }
 
 const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
@@ -79,7 +79,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 citizen-stagger">
         {/* Active Reports */}
         <button
-          onClick={() => onNavigate('report')}
+          onClick={() => onNavigate('myReports')}
           className="bg-gradient-to-br from-amber-500/15 to-orange-600/10 border border-amber-500/20 rounded-2xl p-5 text-left transition-all hover:border-amber-400/40 hover:scale-[1.02] active:scale-[0.98]"
         >
           <div className="text-3xl mb-2">🚨</div>
@@ -89,7 +89,7 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
 
         {/* Resolved */}
         <button
-          onClick={() => onNavigate('report')}
+          onClick={() => onNavigate('myReports')}
           className="bg-gradient-to-br from-emerald-500/15 to-green-600/10 border border-emerald-500/20 rounded-2xl p-5 text-left transition-all hover:border-emerald-400/40 hover:scale-[1.02] active:scale-[0.98]"
         >
           <div className="text-3xl mb-2">✅</div>
@@ -170,8 +170,8 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <span>📋</span> Recent Waste Reports
             </h3>
-            <button onClick={() => onNavigate('report')} className="text-xs font-semibold text-sky-400 hover:underline">
-              Submit New +
+            <button onClick={() => onNavigate('myReports')} className="text-xs font-semibold text-sky-400 hover:underline">
+              Track All Grievances &rarr;
             </button>
           </div>
 

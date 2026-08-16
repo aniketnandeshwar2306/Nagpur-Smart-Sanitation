@@ -12,6 +12,7 @@ export interface Translations {
   tabs: {
     home: string;
     report: string;
+    myReports: string;
     tracker: string;
     schedule: string;
     rewards: string;
@@ -44,6 +45,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     tabs: {
       home: 'Home',
       report: 'Report Waste',
+      myReports: 'My Complaints',
       tracker: 'Live Truck',
       schedule: 'Schedule',
       rewards: 'Rewards',
@@ -74,6 +76,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     tabs: {
       home: 'मुख्य',
       report: 'कचरा नोंदवा',
+      myReports: 'माझ्या तक्रारी',
       tracker: 'थेट गाडी',
       schedule: 'वेळापत्रक',
       rewards: 'बक्षीसे',
@@ -104,6 +107,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     tabs: {
       home: 'मुख्य',
       report: 'कचरा रिपोर्ट करें',
+      myReports: 'मेरी शिकायतें',
       tracker: 'लाइव ट्रक',
       schedule: 'समय सारणी',
       rewards: 'पुरस्कार',

@@ -27,6 +27,22 @@ class WasteReportRequest(BaseModel):
     severity: Optional[int] = Field(3, ge=1, le=5)
 
 
+class AssignedAuthority(BaseModel):
+    name: str
+    role: str
+    phone: str
+    email: str
+    department: str
+    avatar_icon: str
+    avatar_url: Optional[str] = None
+
+
+class TimelineEvent(BaseModel):
+    status: str
+    timestamp: str
+    note: str
+
+
 class WasteReportResponse(BaseModel):
     ticket_id: str
     status: str
@@ -36,6 +52,9 @@ class WasteReportResponse(BaseModel):
     description: Optional[str]
     severity: int
     created_at: str
+    image_url: Optional[str] = None
+    assigned_authority: Optional[AssignedAuthority] = None
+    timeline: list[TimelineEvent] = []
 
 
 class ScheduleDay(BaseModel):
@@ -118,6 +137,16 @@ def submit_waste_report(payload: WasteReportRequest):
     ticket_id = f"NMC-{uuid.uuid4().hex[:8].upper()}"
     now = datetime.utcnow().isoformat()
 
+    default_authority = AssignedAuthority(
+        name="Inspector Vijay Deshmukh",
+        role="Sanitation Inspector — Ward 14",
+        phone="+91 98231 44556",
+        email="vijay.deshmukh@nmc.gov.in",
+        department="NMC Solid Waste Management Dept.",
+        avatar_icon="👨‍✈️",
+        avatar_url="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=300&auto=format&fit=crop&q=80",
+    )
+
     report = {
         "ticket_id": ticket_id,
         "status": "submitted",
@@ -126,8 +155,21 @@ def submit_waste_report(payload: WasteReportRequest):
         "longitude": payload.longitude,
         "description": payload.description or "",
         "severity": payload.severity if payload.severity is not None else 3,
-        "image_base64": payload.image_base64[:100] + "...",  # truncate for storage
         "created_at": now,
+        "image_url": "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500&auto=format&fit=crop&q=60",
+        "assigned_authority": default_authority.model_dump(),
+        "timeline": [
+            TimelineEvent(
+                status="submitted",
+                timestamp=now,
+                note="Ticket registered via Citizen Portal and geotagged.",
+            ).model_dump(),
+            TimelineEvent(
+                status="assigned",
+                timestamp=now,
+                note="Assigned to Ward 14 Sanitation Inspector Vijay Deshmukh.",
+            ).model_dump(),
+        ],
     }
     MOCK_REPORTS.append(report)
 
@@ -140,13 +182,26 @@ def submit_waste_report(payload: WasteReportRequest):
         description=payload.description,
         severity=payload.severity if payload.severity is not None else 3,
         created_at=now,
+        image_url=report["image_url"],
+        assigned_authority=default_authority,
+        timeline=[
+            TimelineEvent(
+                status="submitted",
+                timestamp=now,
+                note="Ticket registered via Citizen Portal and geotagged.",
+            ),
+            TimelineEvent(
+                status="assigned",
+                timestamp=now,
+                note="Assigned to Ward 14 Sanitation Inspector Vijay Deshmukh.",
+            ),
+        ],
     )
 
 
 @router.get("/reports", response_model=list[WasteReportResponse])
 def get_citizen_reports():
-    """Fetch all waste reports submitted by the citizen."""
-    # Combine mock seed data with any reports submitted this session
+    """Fetch all waste reports submitted by the citizen with assigned authority details."""
     seed_reports = [
         {
             "ticket_id": "NMC-A1B2C3D4",
@@ -154,9 +209,24 @@ def get_citizen_reports():
             "waste_type": "wet",
             "latitude": 21.1458,
             "longitude": 79.0882,
-            "description": "Overflowing garbage near Sitabuldi metro station",
+            "description": "Overflowing garbage near Sitabuldi metro station entrance.",
             "severity": 4,
             "created_at": "2026-08-14T08:30:00",
+            "image_url": "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500&auto=format&fit=crop&q=60",
+            "assigned_authority": {
+                "name": "Inspector Vijay Deshmukh",
+                "role": "Sanitation Inspector — Ward 14",
+                "phone": "+91 98231 44556",
+                "email": "vijay.deshmukh@nmc.gov.in",
+                "department": "NMC Solid Waste Management Dept.",
+                "avatar_icon": "👨‍✈️",
+                "avatar_url": "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=300&auto=format&fit=crop&q=80",
+            },
+            "timeline": [
+                {"status": "submitted", "timestamp": "2026-08-14T08:30:00", "note": "Grievance registered with GPS location."},
+                {"status": "assigned", "timestamp": "2026-08-14T09:15:00", "note": "Assigned to Inspector Vijay Deshmukh."},
+                {"status": "in_progress", "timestamp": "2026-08-14T11:00:00", "note": "Collection vehicle NMC-T101 dispatched to site."},
+            ],
         },
         {
             "ticket_id": "NMC-E5F6G7H8",
@@ -164,9 +234,25 @@ def get_citizen_reports():
             "waste_type": "dry",
             "latitude": 21.1535,
             "longitude": 79.0725,
-            "description": "Plastic waste dumped near Ambazari lake",
+            "description": "Plastic waste dumped near Ambazari lake promenade.",
             "severity": 3,
             "created_at": "2026-08-12T14:15:00",
+            "image_url": "https://images.unsplash.com/photo-1604186838347-9faaf0deed60?w=500&auto=format&fit=crop&q=60",
+            "assigned_authority": {
+                "name": "Supervisor Rajesh Shinde",
+                "role": "Area Sanitary Supervisor — Ambazari Zone",
+                "phone": "+91 94228 11990",
+                "email": "rajesh.shinde@nagpur.gov.in",
+                "department": "NMC West Zone Sanitation Unit",
+                "avatar_icon": "👷‍♂️",
+                "avatar_url": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&auto=format&fit=crop&q=80",
+            },
+            "timeline": [
+                {"status": "submitted", "timestamp": "2026-08-12T14:15:00", "note": "Grievance registered with photograph."},
+                {"status": "assigned", "timestamp": "2026-08-12T15:00:00", "note": "Assigned to Supervisor Rajesh Shinde."},
+                {"status": "in_progress", "timestamp": "2026-08-12T16:30:00", "note": "Cleanup crew mobilized."},
+                {"status": "resolved", "timestamp": "2026-08-13T10:00:00", "note": "Site cleared and verified by supervisor."},
+            ],
         },
         {
             "ticket_id": "NMC-I9J0K1L2",
@@ -174,16 +260,26 @@ def get_citizen_reports():
             "waste_type": "hazardous",
             "latitude": 21.1391,
             "longitude": 79.1050,
-            "description": "Chemical containers discarded in Dharampeth drain",
+            "description": "Chemical containers discarded in Dharampeth drain.",
             "severity": 5,
             "created_at": "2026-08-15T19:45:00",
+            "image_url": "https://images.unsplash.com/photo-1611284446314-60a55ac0d494?w=500&auto=format&fit=crop&q=60",
+            "assigned_authority": {
+                "name": "Dr. Sunita Kulkarni",
+                "role": "Chief Health Officer — NMC HazMat Unit",
+                "phone": "+91 97654 32100",
+                "email": "sunita.kulkarni@nmc.gov.in",
+                "department": "NMC Public Health & HazMat Division",
+                "avatar_icon": "👩‍⚕️",
+                "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&auto=format&fit=crop&q=80",
+            },
+            "timeline": [
+                {"status": "submitted", "timestamp": "2026-08-15T19:45:00", "note": "High severity hazard report logged."},
+            ],
         },
     ]
 
-    all_reports = seed_reports + [
-        {k: v for k, v in r.items() if k != "image_base64"}
-        for r in MOCK_REPORTS
-    ]
+    all_reports = seed_reports + MOCK_REPORTS
     return [WasteReportResponse(**r) for r in all_reports]
 
 
@@ -226,7 +322,6 @@ def get_weekly_schedule():
 @router.get("/rewards", response_model=RewardProfile)
 def get_citizen_rewards():
     """Return the citizen's gamification profile."""
-    # Count session reports for dynamic points
     session_report_points = len(MOCK_REPORTS) * 50
 
     return RewardProfile(
