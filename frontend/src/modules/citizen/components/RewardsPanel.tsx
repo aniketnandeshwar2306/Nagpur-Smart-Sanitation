@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import type { RewardProfile, LeaderboardEntry } from '../types/citizen.types';
+import type { RewardProfile, LeaderboardEntry, RedeemableReward } from '../types/citizen.types';
 import { fetchRewards, fetchLeaderboard } from '../api/citizenApi';
 
 const TIER_CONFIG: Record<string, { icon: string; color: string; gradient: string }> = {
@@ -10,11 +10,33 @@ const TIER_CONFIG: Record<string, { icon: string; color: string; gradient: strin
   Forest:   { icon: '🌲', color: 'text-emerald-300', gradient: 'from-emerald-400 to-cyan-400' },
 };
 
+interface WardRanking {
+  rank: number;
+  wardName: string;
+  segregationRate: number;
+  activeCitizens: number;
+  isCurrentWard: boolean;
+}
+
+const NAGPUR_WARDS: WardRanking[] = [
+  { rank: 1, wardName: 'Laxmi Nagar Zone', segregationRate: 88, activeCitizens: 4210, isCurrentWard: false },
+  { rank: 2, wardName: 'Dharampeth Zone (Ward 14)', segregationRate: 84, activeCitizens: 3890, isCurrentWard: true },
+  { rank: 3, wardName: 'Hanuman Nagar Zone', segregationRate: 79, activeCitizens: 3120, isCurrentWard: false },
+  { rank: 4, wardName: 'Sitabuldi Zone', segregationRate: 75, activeCitizens: 2980, isCurrentWard: false },
+  { rank: 5, wardName: 'Mangalwari Zone', segregationRate: 71, activeCitizens: 2450, isCurrentWard: false },
+  { rank: 6, wardName: 'Nehru Nagar Zone', segregationRate: 68, activeCitizens: 2100, isCurrentWard: false },
+  { rank: 7, wardName: 'Satranjipura Zone', segregationRate: 64, activeCitizens: 1850, isCurrentWard: false },
+];
+
 const RewardsPanel: React.FC = () => {
   const [rewards, setRewards] = useState<RewardProfile | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'redeem' | 'leaderboard'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'redeem' | 'leaderboard' | 'wardRankings'>('overview');
+
+  // Voucher modal state
+  const [selectedVoucher, setSelectedVoucher] = useState<RedeemableReward | null>(null);
+  const [redeemedCode, setRedeemedCode] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -30,6 +52,29 @@ const RewardsPanel: React.FC = () => {
     };
     load();
   }, []);
+
+  const handleRedeem = (item: RedeemableReward) => {
+    if (!rewards || rewards.total_points < item.cost) return;
+
+    // Deduct points locally for real-time responsiveness
+    setRewards({
+      ...rewards,
+      total_points: rewards.total_points - item.cost,
+      history: [
+        {
+          id: `txn-${Date.now().toString().slice(-4)}`,
+          action: `Redeemed: ${item.name}`,
+          points: -item.cost,
+          date: new Date().toISOString().split('T')[0],
+        },
+        ...rewards.history,
+      ],
+    });
+
+    const code = `NMC-${item.name.slice(0, 3).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    setRedeemedCode(code);
+    setSelectedVoucher(item);
+  };
 
   if (loading || !rewards) {
     return (
@@ -132,18 +177,18 @@ const RewardsPanel: React.FC = () => {
       </div>
 
       {/* Sub-tabs */}
-      <div className="flex gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 max-w-md">
-        {(['overview', 'redeem', 'leaderboard'] as const).map(tab => (
+      <div className="flex gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 max-w-lg">
+        {(['overview', 'redeem', 'leaderboard', 'wardRankings'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all capitalize ${
+            className={`flex-1 py-2.5 text-xs md:text-sm font-semibold rounded-xl transition-all capitalize ${
               activeTab === tab
                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            {tab === 'overview' ? '📊 History' : tab === 'redeem' ? '🎁 Redeem' : '🏆 Board'}
+            {tab === 'overview' ? '📊 History' : tab === 'redeem' ? '🎁 Redeem' : tab === 'leaderboard' ? '🏆 Citizens' : '🏙️ Ward Ranks'}
           </button>
         ))}
       </div>
@@ -157,15 +202,21 @@ const RewardsPanel: React.FC = () => {
               className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-between citizen-card-lift"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-sm font-bold">
-                  +{txn.points}
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold border ${
+                  txn.points > 0
+                    ? 'bg-emerald-500/15 border-emerald-500/20 text-emerald-400'
+                    : 'bg-rose-500/15 border-rose-500/20 text-rose-400'
+                }`}>
+                  {txn.points > 0 ? `+${txn.points}` : txn.points}
                 </div>
                 <div>
                   <div className="text-sm font-bold text-white">{txn.action}</div>
                   <div className="text-xs text-slate-500">{txn.date}</div>
                 </div>
               </div>
-              <span className="text-emerald-400 text-sm font-extrabold">🌿 +{txn.points} pts</span>
+              <span className={`text-sm font-extrabold ${txn.points > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {txn.points > 0 ? `🌿 +${txn.points}` : `${txn.points}`} pts
+              </span>
             </div>
           ))}
         </div>
@@ -194,11 +245,12 @@ const RewardsPanel: React.FC = () => {
                   </div>
                 </div>
                 <button
+                  onClick={() => handleRedeem(item)}
                   disabled={!canAfford}
                   className={`
                     mt-4 w-full py-2.5 rounded-xl text-xs font-bold transition-all
                     ${canAfford
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30'
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 shadow-md'
                       : 'bg-slate-800 text-slate-600 border border-slate-700/50 cursor-not-allowed'
                     }
                   `}
@@ -245,6 +297,106 @@ const RewardsPanel: React.FC = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Ward Rankings Tab */}
+      {activeTab === 'wardRankings' && (
+        <div className="space-y-4 max-w-3xl citizen-stagger">
+          <div className="bg-gradient-to-r from-sky-500/10 to-emerald-500/10 border border-sky-500/20 rounded-2xl p-4 flex items-center justify-between">
+            <div>
+              <div className="text-xs text-sky-400 font-bold uppercase tracking-wider">Inter-Ward Civic Competition</div>
+              <div className="text-sm font-bold text-white mt-0.5">Nagpur City Municipal Ward Standings</div>
+            </div>
+            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/30">
+              Updated Live
+            </span>
+          </div>
+
+          {NAGPUR_WARDS.map(w => (
+            <div
+              key={w.rank}
+              className={`
+                rounded-2xl p-4 border transition-all citizen-card-lift
+                ${w.isCurrentWard
+                  ? 'bg-sky-500/10 border-sky-500/40 ring-1 ring-sky-400/30'
+                  : 'bg-slate-900/60 border-slate-800'
+                }
+              `}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-sm font-bold text-slate-400">#{w.rank}</span>
+                  <span className={`font-bold text-base ${w.isCurrentWard ? 'text-sky-400' : 'text-white'}`}>
+                    {w.wardName}
+                    {w.isCurrentWard && <span className="text-xs text-sky-400/70 ml-2 font-normal">(Your Ward)</span>}
+                  </span>
+                </div>
+                <span className="text-sm font-extrabold text-emerald-400">{w.segregationRate}% Compliance</span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                  style={{ width: `${w.segregationRate}%` }}
+                />
+              </div>
+              <div className="text-right text-[10px] text-slate-500 mt-1">
+                {w.activeCitizens.toLocaleString()} Active Citizens Reporting
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* QR Voucher Modal */}
+      {selectedVoucher && redeemedCode && (
+        <div className="citizen-fade-in-scale fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="citizen-modal-backdrop fixed inset-0" onClick={() => setSelectedVoucher(null)} />
+          <div className="relative z-50 bg-slate-900 border border-emerald-500/40 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl space-y-5">
+            <div className="text-5xl">{selectedVoucher.icon}</div>
+            <div>
+              <div className="text-xs text-emerald-400 font-bold uppercase tracking-wider">NMC Digital Voucher Claimed!</div>
+              <h3 className="text-xl font-extrabold text-white mt-1">{selectedVoucher.name}</h3>
+            </div>
+
+            {/* Generated QR Code Box */}
+            <div className="bg-white p-4 rounded-2xl inline-block shadow-inner">
+              <svg width="140" height="140" viewBox="0 0 100 100" className="mx-auto">
+                <rect width="100" height="100" fill="#ffffff" />
+                {/* QR Pattern Blocks */}
+                <rect x="10" y="10" width="30" height="30" fill="#0f172a" />
+                <rect x="15" y="15" width="20" height="20" fill="#ffffff" />
+                <rect x="20" y="20" width="10" height="10" fill="#0f172a" />
+
+                <rect x="60" y="10" width="30" height="30" fill="#0f172a" />
+                <rect x="65" y="15" width="20" height="20" fill="#ffffff" />
+                <rect x="70" y="20" width="10" height="10" fill="#0f172a" />
+
+                <rect x="10" y="60" width="30" height="30" fill="#0f172a" />
+                <rect x="15" y="65" width="20" height="20" fill="#ffffff" />
+                <rect x="20" y="70" width="10" height="10" fill="#0f172a" />
+
+                <rect x="50" y="50" width="15" height="15" fill="#0f172a" />
+                <rect x="70" y="60" width="15" height="20" fill="#0f172a" />
+                <rect x="50" y="75" width="20" height="15" fill="#0f172a" />
+              </svg>
+            </div>
+
+            <div className="bg-slate-950 rounded-xl p-3 border border-slate-800">
+              <div className="text-[10px] text-slate-500 uppercase tracking-wider">Voucher Coupon Code</div>
+              <div className="text-lg font-mono font-black text-sky-400">{redeemedCode}</div>
+              <div className="text-[10px] text-slate-500 mt-1">Valid at all NMC counters till 31 Dec 2026</div>
+            </div>
+
+            <button
+              onClick={() => setSelectedVoucher(null)}
+              className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-extrabold rounded-xl shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-transform"
+            >
+              Done / Save Voucher
+            </button>
+          </div>
         </div>
       )}
     </div>

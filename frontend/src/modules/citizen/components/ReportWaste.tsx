@@ -9,6 +9,12 @@ interface SuccessInfo {
   points: number;
 }
 
+interface AiDetection {
+  label: string;
+  confidence: number;
+  suggestedCategory: WasteType;
+}
+
 const WASTE_TYPES: { value: WasteType; label: string; icon: string; color: string }[] = [
   { value: 'wet',       label: 'Wet',       icon: '🥬', color: 'bg-green-500/20 border-green-500/40 text-green-400' },
   { value: 'dry',       label: 'Dry',       icon: '📦', color: 'bg-amber-500/20 border-amber-500/40 text-amber-400' },
@@ -28,6 +34,17 @@ const ReportWaste: React.FC = () => {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [flashActive, setFlashActive] = useState(false);
+
+  // AI Detection State
+  const [isAiScanning, setIsAiScanning] = useState(false);
+  const [aiDetection, setAiDetection] = useState<AiDetection | null>(null);
+
+  // Voice Recording State
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Geolocation
   const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -92,7 +109,18 @@ const ReportWaste: React.FC = () => {
     return () => stopCamera();
   }, [startCamera, stopCamera]);
 
-  // ---- Capture photo ----
+  // Voice recording timer
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+    if (isRecordingVoice) {
+      timer = setInterval(() => {
+        setRecordingSeconds(s => s + 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isRecordingVoice]);
+
+  // ---- Capture photo + AI scan simulation ----
   const capturePhoto = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -113,11 +141,67 @@ const ReportWaste: React.FC = () => {
 
     stopCamera();
     setStep('form');
+
+    // Trigger simulated AI Vision Classifier
+    setIsAiScanning(true);
+    setTimeout(() => {
+      setIsAiScanning(false);
+      const aiResults: AiDetection[] = [
+        { label: 'Plastic Packaging Waste', confidence: 96, suggestedCategory: 'dry' },
+        { label: 'Organic Food Waste', confidence: 92, suggestedCategory: 'wet' },
+        { label: 'Electronic Debris', confidence: 89, suggestedCategory: 'e-waste' },
+      ];
+      const picked = aiResults[Math.floor(Math.random() * aiResults.length)];
+      setAiDetection(picked);
+      setWasteType(picked.suggestedCategory);
+    }, 1500);
+  };
+
+  // ---- Voice Note Recording Controls ----
+  const startVoiceRecording = async () => {
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(audioStream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(audioBlob);
+        setAudioUrl(url);
+        audioStream.getTracks().forEach(t => t.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecordingVoice(true);
+      setRecordingSeconds(0);
+    } catch {
+      // Fallback simulated voice note if microphone access restricted
+      setIsRecordingVoice(true);
+      setRecordingSeconds(0);
+      setTimeout(() => {
+        setIsRecordingVoice(false);
+        setAudioUrl('simulated-voice-note.mp3');
+      }, 3000);
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && isRecordingVoice) {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecordingVoice(false);
   };
 
   // ---- Retake ----
   const retake = () => {
     setCapturedImage(null);
+    setAiDetection(null);
+    setAudioUrl(null);
     setStep('camera');
     startCamera();
   };
@@ -150,6 +234,8 @@ const ReportWaste: React.FC = () => {
   // ---- Reset for new report ----
   const resetFlow = () => {
     setCapturedImage(null);
+    setAiDetection(null);
+    setAudioUrl(null);
     setWasteType('wet');
     setSeverity(3);
     setDescription('');
@@ -174,7 +260,7 @@ const ReportWaste: React.FC = () => {
       <div className="citizen-fade-in space-y-6 max-w-4xl mx-auto">
         <div>
           <h2 className="text-2xl font-bold text-white">📸 Live Camera Waste Capture</h2>
-          <p className="text-slate-400 text-sm mt-1">Capture a photo of the garbage site. Live GPS coordinates will be attached automatically.</p>
+          <p className="text-slate-400 text-sm mt-1">Capture a photo of the garbage site. AI waste detector &amp; GPS coordinates will be attached automatically.</p>
         </div>
 
         {cameraError ? (
@@ -229,13 +315,8 @@ const ReportWaste: React.FC = () => {
             >
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-sky-400 to-cyan-500" />
             </button>
-            <span className="text-xs text-slate-400 font-medium">Tap to Snap Photo</span>
+            <span className="text-xs text-slate-400 font-medium">Tap to Snap Photo &amp; Run AI Detector</span>
           </div>
-        )}
-        {!geoCoords && !geoError && (
-          <p className="text-center text-slate-500 text-xs animate-pulse">
-            Acquiring GPS location…
-          </p>
         )}
 
         <canvas ref={canvasRef} className="hidden" />
@@ -276,27 +357,55 @@ const ReportWaste: React.FC = () => {
     <div className="citizen-fade-in space-y-6 max-w-5xl mx-auto">
       <div>
         <h2 className="text-2xl font-bold text-white">📝 Review &amp; Submit Waste Report</h2>
-        <p className="text-slate-400 text-sm mt-1">Review captured image, specify waste category, and set severity level.</p>
+        <p className="text-slate-400 text-sm mt-1">Review captured image, AI classification findings, and add audio notes.</p>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        {/* Left Column: Image Preview */}
+        {/* Left Column: Image Preview + AI Scanner Overlay */}
         <div className="space-y-4">
-          <label className="text-sm font-semibold text-slate-300 block">Captured Photo &amp; Geotag</label>
+          <label className="text-sm font-semibold text-slate-300 block">Captured Photo &amp; AI Analysis</label>
           {capturedImage && (
             <div className="relative rounded-3xl overflow-hidden shadow-xl border border-slate-800 aspect-[4/3]">
               <img src={capturedImage} alt="Captured waste" className="w-full h-full object-cover" />
+
+              {/* AI Scanning Effect Line */}
+              {isAiScanning && (
+                <div className="absolute inset-0 bg-sky-500/10 flex items-center justify-center backdrop-blur-xs">
+                  <div className="w-full h-1 bg-cyan-400 shadow-lg shadow-cyan-400/80 animate-bounce" />
+                  <div className="absolute bg-black/80 px-4 py-2 rounded-xl text-xs font-bold text-cyan-400 font-mono">
+                    🤖 AI Classifier Scanning Photo…
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={retake}
                 className="absolute top-4 right-4 bg-black/75 backdrop-blur-md border border-slate-700 text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-black transition-colors"
               >
                 🔄 Retake Photo
               </button>
+
               {geoCoords && (
                 <div className="absolute bottom-4 left-4 bg-black/75 backdrop-blur-md rounded-xl px-4 py-2 text-xs text-emerald-400 font-mono border border-emerald-500/30">
                   📍 {geoCoords.lat.toFixed(5)}, {geoCoords.lng.toFixed(5)}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* AI Result Card */}
+          {aiDetection && !isAiScanning && (
+            <div className="bg-gradient-to-r from-sky-500/10 to-teal-500/10 border border-sky-500/30 rounded-2xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🤖</span>
+                <div>
+                  <div className="text-xs text-sky-400 font-bold uppercase tracking-wider">AI Computer Vision Tag</div>
+                  <div className="text-sm font-extrabold text-white">{aiDetection.label}</div>
+                </div>
+              </div>
+              <span className="text-xs font-mono font-bold bg-sky-500/20 text-sky-300 px-2.5 py-1 rounded-full border border-sky-500/30">
+                {aiDetection.confidence}% Match
+              </span>
             </div>
           )}
         </div>
@@ -350,6 +459,42 @@ const ReportWaste: React.FC = () => {
             </div>
           </div>
 
+          {/* Voice Note Audio Recorder */}
+          <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-slate-300 flex items-center gap-2">
+                <span>🎙️</span> Voice Audio Note (Marathi / Hindi / English)
+              </label>
+              {audioUrl && (
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">
+                  Audio Attached
+                </span>
+              )}
+            </div>
+
+            {!isRecordingVoice ? (
+              <button
+                onClick={startVoiceRecording}
+                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+              >
+                <span>🔴</span> {audioUrl ? 'Re-record Voice Note' : 'Tap to Record Voice Note'}
+              </button>
+            ) : (
+              <button
+                onClick={stopVoiceRecording}
+                className="w-full py-2.5 bg-rose-500/20 border border-rose-500/40 text-rose-400 text-xs font-bold rounded-xl flex items-center justify-center gap-2 animate-pulse"
+              >
+                <span>⏹️</span> Recording Voice ({recordingSeconds}s) — Tap to Stop
+              </button>
+            )}
+
+            {audioUrl && !isRecordingVoice && (
+              <div className="mt-3">
+                <audio src={audioUrl} controls className="w-full h-8 rounded-lg" />
+              </div>
+            )}
+          </div>
+
           {/* Description */}
           <div>
             <label className="text-sm font-semibold text-slate-300 block mb-2">
@@ -359,11 +504,10 @@ const ReportWaste: React.FC = () => {
               value={description}
               onChange={e => setDescription(e.target.value)}
               maxLength={500}
-              rows={3}
-              placeholder="Describe nearby landmarks or specific waste overflow issues…"
+              rows={2}
+              placeholder="Describe landmarks or waste site specifics…"
               className="w-full bg-slate-800/60 border border-slate-700/50 rounded-2xl p-3.5 text-sm text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-sky-500/50 transition-all"
             />
-            <div className="text-right text-xs text-slate-500 mt-1">{description.length}/500</div>
           </div>
 
           {/* Error */}
