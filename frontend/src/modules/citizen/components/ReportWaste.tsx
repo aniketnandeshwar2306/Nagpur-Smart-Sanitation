@@ -27,6 +27,9 @@ const ReportWaste: React.FC = () => {
   // State machine: 'camera' → 'form' → 'submitting' → 'success'
   const [step, setStep] = useState<'camera' | 'form' | 'submitting' | 'success'>('camera');
 
+  // Camera state (default FALSE so camera does NOT open automatically)
+  const [isCameraActive, setIsCameraActive] = useState(false);
+
   // Camera & File input
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -64,6 +67,7 @@ const ReportWaste: React.FC = () => {
   // ---- Start camera ----
   const startCamera = useCallback(async () => {
     setCameraError(null);
+    setIsCameraActive(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -90,6 +94,7 @@ const ReportWaste: React.FC = () => {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
     }
+    setIsCameraActive(false);
   }, []);
 
   // ---- Request geolocation ----
@@ -107,11 +112,10 @@ const ReportWaste: React.FC = () => {
     setGeoCoords({ lat: 21.1458, lng: 79.0882 });
   }, []);
 
-  // Start camera on mount
+  // Cleanup camera on unmount ONLY (do NOT auto-start camera)
   useEffect(() => {
-    startCamera();
     return () => stopCamera();
-  }, [startCamera, stopCamera]);
+  }, [stopCamera]);
 
   // Voice recording timer
   useEffect(() => {
@@ -228,7 +232,7 @@ const ReportWaste: React.FC = () => {
     setAiDetection(null);
     setAudioUrl(null);
     setStep('camera');
-    startCamera();
+    setIsCameraActive(false);
   };
 
   const handleCancel = () => {
@@ -242,7 +246,7 @@ const ReportWaste: React.FC = () => {
     setDescription('');
     setSubmitError(null);
     setStep('camera');
-    startCamera();
+    setIsCameraActive(false);
   };
 
   // ---- Submit ----
@@ -281,7 +285,7 @@ const ReportWaste: React.FC = () => {
     setSuccessInfo(null);
     setSubmitError(null);
     setStep('camera');
-    startCamera();
+    setIsCameraActive(false);
   };
 
   const severityLabels = ['Minor', 'Low', 'Medium', 'High', 'Critical'];
@@ -293,116 +297,163 @@ const ReportWaste: React.FC = () => {
     'from-red-500 to-red-400',
   ];
 
-  // ====== CAMERA VIEW ======
+  // ====== STEP 1: INITIAL SELECTION OR LIVE CAMERA VIEW ======
   if (step === 'camera') {
     return (
       <div className="citizen-fade-in space-y-6 max-w-4xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-white">📸 Report Waste &amp; Grievance</h2>
-            <p className="text-slate-400 text-sm mt-1">Capture via camera or upload from gallery. AI detector &amp; GPS coordinates will be attached.</p>
+            <p className="text-slate-400 text-sm mt-1">Choose how you want to provide the waste photo: Live Camera or Upload from Gallery.</p>
           </div>
 
-          <button
-            onClick={handleCancel}
-            className="px-4 py-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors self-start sm:self-auto"
-          >
-            ❌ Reset / Cancel
-          </button>
+          {(isCameraActive || cameraError) && (
+            <button
+              onClick={handleCancel}
+              className="px-4 py-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors self-start sm:self-auto"
+            >
+              ❌ Close Camera
+            </button>
+          )}
         </div>
 
-        {cameraError ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-4">
-            <div className="text-5xl">📷</div>
-            <p className="text-slate-300 text-sm font-medium max-w-md mx-auto">{cameraError}</p>
-            
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <button
-                onClick={startCamera}
-                className="px-5 py-2.5 bg-sky-500/20 border border-sky-500/40 text-sky-400 rounded-xl text-xs font-bold hover:bg-sky-500/30 transition-colors"
-              >
-                🔄 Retry Camera
-              </button>
+        {/* Hidden File Input for Gallery */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleGallerySelect}
+          className="hidden"
+        />
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-5 py-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded-xl text-xs font-bold hover:bg-emerald-500/30 transition-colors flex items-center gap-2"
-              >
-                <span>🖼️</span> Select from Gallery
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="citizen-camera-viewfinder relative bg-black rounded-3xl overflow-hidden aspect-[16/9] max-h-[500px] shadow-2xl border border-slate-800">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-            {/* Flash overlay */}
-            {flashActive && (
-              <div className="absolute inset-0 bg-white z-20 citizen-camera-flash" />
-            )}
-            {/* Geo overlay */}
-            {geoCoords && (
-              <div className="absolute bottom-4 left-4 bg-black/75 backdrop-blur-md border border-emerald-500/30 rounded-xl px-4 py-2 text-xs text-emerald-400 font-mono z-10 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                GPS: {geoCoords.lat.toFixed(5)}, {geoCoords.lng.toFixed(5)}
+        {/* INITIAL OPTION SELECTION VIEW (When camera is NOT active) */}
+        {!isCameraActive && !cameraError && (
+          <div className="grid md:grid-cols-2 gap-6 pt-2">
+            {/* Option 1: Live Camera Button */}
+            <button
+              onClick={startCamera}
+              className="bg-gradient-to-br from-sky-500/15 via-slate-900 to-slate-900 border border-sky-500/30 rounded-3xl p-8 text-center transition-all hover:border-sky-400 hover:scale-[1.03] active:scale-[0.98] shadow-xl group flex flex-col items-center justify-center space-y-4"
+            >
+              <div className="w-20 h-20 rounded-3xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-4xl group-hover:scale-110 transition-transform">
+                📷
               </div>
-            )}
+              <div>
+                <h3 className="text-xl font-extrabold text-white">Open Live Camera</h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                  Take a photo of the waste site directly with your camera.
+                </p>
+              </div>
+              <span className="px-4 py-2 bg-sky-500/20 text-sky-400 rounded-xl text-xs font-bold border border-sky-500/30">
+                Launch Camera →
+              </span>
+            </button>
+
+            {/* Option 2: Gallery Upload Button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-gradient-to-br from-emerald-500/15 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-3xl p-8 text-center transition-all hover:border-emerald-400 hover:scale-[1.03] active:scale-[0.98] shadow-xl group flex flex-col items-center justify-center space-y-4"
+            >
+              <div className="w-20 h-20 rounded-3xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-4xl group-hover:scale-110 transition-transform">
+                🖼️
+              </div>
+              <div>
+                <h3 className="text-xl font-extrabold text-white">Upload from Gallery</h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                  Choose an existing photo from your device gallery.
+                </p>
+              </div>
+              <span className="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold border border-emerald-500/30">
+                Select Photo →
+              </span>
+            </button>
           </div>
         )}
 
-        {/* Geo Warning if applicable */}
+        {/* LIVE CAMERA VIEWFINDER (When user explicitly opened camera) */}
+        {isCameraActive && (
+          <div className="space-y-6">
+            {cameraError ? (
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-4">
+                <div className="text-5xl">📷</div>
+                <p className="text-slate-300 text-sm font-medium max-w-md mx-auto">{cameraError}</p>
+                
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={startCamera}
+                    className="px-5 py-2.5 bg-sky-500/20 border border-sky-500/40 text-sky-400 rounded-xl text-xs font-bold hover:bg-sky-500/30 transition-colors"
+                  >
+                    🔄 Retry Camera
+                  </button>
+
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-5 py-2.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded-xl text-xs font-bold hover:bg-emerald-500/30 transition-colors flex items-center gap-2"
+                  >
+                    <span>🖼️</span> Select from Gallery
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="citizen-camera-viewfinder relative bg-black rounded-3xl overflow-hidden aspect-[16/9] max-h-[500px] shadow-2xl border border-slate-800">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
+                {/* Flash overlay */}
+                {flashActive && (
+                  <div className="absolute inset-0 bg-white z-20 citizen-camera-flash" />
+                )}
+                {/* Geo overlay */}
+                {geoCoords && (
+                  <div className="absolute bottom-4 left-4 bg-black/75 backdrop-blur-md border border-emerald-500/30 rounded-xl px-4 py-2 text-xs text-emerald-400 font-mono z-10 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    GPS: {geoCoords.lat.toFixed(5)}, {geoCoords.lng.toFixed(5)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Action Controls when camera is active */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-around gap-6">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs font-bold rounded-2xl flex items-center justify-center gap-2.5 transition-all"
+              >
+                <span>🖼️</span> Switch to Gallery
+              </button>
+
+              {!cameraError && (
+                <div className="flex flex-col items-center gap-1.5">
+                  <button
+                    onClick={capturePhoto}
+                    className="w-20 h-20 rounded-full bg-white border-4 border-sky-400 shadow-xl shadow-sky-400/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                    title="Capture Photo"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-sky-400 to-cyan-500" />
+                  </button>
+                  <span className="text-[11px] text-slate-400 font-semibold">Snap Photo &amp; Analyze</span>
+                </div>
+              )}
+
+              <button
+                onClick={stopCamera}
+                className="w-full sm:w-auto px-6 py-3.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-2xl flex items-center justify-center gap-2 transition-all"
+              >
+                <span>🛑</span> Turn Off Camera
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Geo Warning */}
         {geoError && (
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-amber-400 text-xs font-medium">
             ⚠️ {geoError}
           </div>
         )}
-
-        {/* Action Controls: Camera Snap + Select from Gallery */}
-        <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-around gap-6">
-          {/* Gallery Upload Option */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full sm:w-auto px-6 py-3.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs font-bold rounded-2xl flex items-center justify-center gap-2.5 transition-transform hover:scale-[1.03] active:scale-[0.98]"
-          >
-            <span className="text-xl">🖼️</span> Choose from Gallery
-          </button>
-
-          {/* Hidden File Input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleGallerySelect}
-            className="hidden"
-          />
-
-          {/* Center Camera Capture Button */}
-          {!cameraError && (
-            <div className="flex flex-col items-center gap-1.5">
-              <button
-                onClick={capturePhoto}
-                className="w-20 h-20 rounded-full bg-white border-4 border-sky-400 shadow-xl shadow-sky-400/30 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-                title="Capture Photo"
-              >
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-sky-400 to-cyan-500" />
-              </button>
-              <span className="text-[11px] text-slate-400 font-semibold">Live Camera Snap</span>
-            </div>
-          )}
-
-          {/* Cancel Button */}
-          <button
-            onClick={handleCancel}
-            className="w-full sm:w-auto px-6 py-3.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-2xl flex items-center justify-center gap-2 transition-transform hover:scale-[1.03] active:scale-[0.98]"
-          >
-            <span>❌</span> Cancel
-          </button>
-        </div>
 
         <canvas ref={canvasRef} className="hidden" />
       </div>
