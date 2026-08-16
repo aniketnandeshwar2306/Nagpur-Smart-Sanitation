@@ -8,6 +8,7 @@ import { GISWardMap } from './components/GISWardMap';
 import { SegregationModal } from './components/SegregationModal';
 import { TaskDetailModal } from './components/TaskDetailModal';
 import { SafetyChecklistModal } from './components/SafetyChecklistModal';
+import { CreateTaskModal } from './components/CreateTaskModal';
 
 export const WorkerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'tasks' | 'map' | 'ai_verify' | 'stats'>('tasks');
@@ -35,12 +36,65 @@ export const WorkerDashboard: React.FC = () => {
   const [isOnline] = useState<boolean>(true);
   const [toastMessage, setToastMessage] = useState<{ title: string; type: 'success' | 'info' | 'warn' } | null>(null);
 
+  // Real GPS Geolocation Tracking
+  const [workerGps, setWorkerGps] = useState<{ latitude: number; longitude: number }>({
+    latitude: 21.1470,
+    longitude: 79.0580
+  });
+
   // Modal states
   const [verifyingTask, setVerifyingTask] = useState<DailyTask | null>(null);
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState<boolean>(false);
   const [selectedTaskDetail, setSelectedTaskDetail] = useState<DailyTask | null>(null);
   const [isSafetyChecklistOpen, setIsSafetyChecklistOpen] = useState<boolean>(false);
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState<boolean>(false);
   const [highlightedMapTaskId, setHighlightedMapTaskId] = useState<string | null>(null);
+
+  // Real-time GPS Geolocation Tracker & 10s Telemetry Dispatcher
+  useEffect(() => {
+    if (!('geolocation' in navigator)) {
+      console.warn('HTML5 Geolocation is not supported by this browser.');
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setWorkerGps({ latitude, longitude });
+      },
+      (error) => {
+        console.warn('Geolocation access error/fallback:', error.message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000
+      }
+    );
+
+    // Initial telemetry ping
+    workerApi.recordTelemetry({
+      truck_no: stats.active_vehicle_number.split(' ')[0] || 'MH-31-EQ-9104',
+      lat: workerGps.latitude,
+      lon: workerGps.longitude,
+      timestamp: new Date().toISOString()
+    });
+
+    // Send vehicle telemetry updates every 10 seconds
+    const telemetryTimer = setInterval(() => {
+      workerApi.recordTelemetry({
+        truck_no: stats.active_vehicle_number.split(' ')[0] || 'MH-31-EQ-9104',
+        lat: workerGps.latitude,
+        lon: workerGps.longitude,
+        timestamp: new Date().toISOString()
+      });
+    }, 10000);
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      clearInterval(telemetryTimer);
+    };
+  }, [workerGps.latitude, workerGps.longitude, stats.active_vehicle_number]);
 
   // Fetch initial data
   useEffect(() => {
@@ -151,6 +205,21 @@ export const WorkerDashboard: React.FC = () => {
     showToast(`Focused on ${task.location.address}`, 'info');
   };
 
+  const handleTaskCreated = (newTask: DailyTask) => {
+    setTasks(prev => [newTask, ...prev]);
+    setStats(prev => ({
+      ...prev,
+      total_assigned_today: prev.total_assigned_today + 1,
+      pending_today: prev.pending_today + 1
+    }));
+    showToast(
+      language === 'mr'
+        ? `नवीन काम नोंदवले: ${newTask.ticket_number}`
+        : `New spot added to route: ${newTask.ticket_number}`,
+      'success'
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-24 font-sans selection:bg-amber-500 selection:text-slate-950">
       {/* Worker Sticky Header */}
@@ -238,6 +307,7 @@ export const WorkerDashboard: React.FC = () => {
             onVerifyTask={task => handleOpenVerifyModal(task)}
             onStatusChange={handleStatusChange}
             onNavigateToMap={handleNavigateToMap}
+            onOpenCreateTask={() => setIsCreateTaskOpen(true)}
           />
         )}
 
@@ -254,6 +324,7 @@ export const WorkerDashboard: React.FC = () => {
               onSelectTask={task => setSelectedTaskDetail(task)}
               onVerifyTask={task => handleOpenVerifyModal(task)}
               selectedTaskId={highlightedMapTaskId}
+              workerCoordinates={[workerGps.latitude, workerGps.longitude]}
             />
           </div>
         )}
@@ -332,11 +403,11 @@ export const WorkerDashboard: React.FC = () => {
 
           {/* Big Center AI Camera Trigger */}
           <button
-            onClick={() => handleOpenVerifyModal()}
+            onClick={() => setIsCreateTaskOpen(true)}
             className="flex-1 py-2.5 px-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/25 flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95 transition-all"
           >
             <span>📷</span>
-            <span>AI Camera</span>
+            <span>Log Spot</span>
           </button>
 
           <button
@@ -357,6 +428,18 @@ export const WorkerDashboard: React.FC = () => {
           </span>
           <span className="font-semibold text-slate-200">{toastMessage.title}</span>
         </div>
+      )}
+
+      {/* Log New Waste Spot with Live Camera Modal */}
+      {isCreateTaskOpen && (
+        <CreateTaskModal
+          language={language}
+          workerGps={workerGps}
+          zoneAssigned={stats.zone_assigned}
+          wardNumber={stats.ward_number}
+          onClose={() => setIsCreateTaskOpen(false)}
+          onTaskCreated={handleTaskCreated}
+        />
       )}
 
       {/* AI Segregation Verification Modal */}

@@ -4,14 +4,15 @@ Author: Worker Module Team
 Prefix: /api/worker
 
 Features:
-1. SQLite Database persistence for tasks, worker shifts, and vehicle telemetry
-2. Real file storage for waste audits in backend/uploads/audits/
+1. SQLite Database persistence for tasks, worker shifts, vehicle telemetry, weather alerts, and GIS wards.
+2. Real file storage for waste audits in backend/uploads/audits/{ticket_no}_{timestamp}.jpg
 3. AI hook analyze_waste_image() for ONNX / YOLOv8 segregation models
-4. Real-time GPS telemetry endpoint for sanitation vehicles
-5. Weather hazard alerts & GIS ward mapping metadata
+4. Real-time GPS telemetry endpoint for sanitation vehicles (POST /api/worker/telemetry)
+5. Weather hazard alerts & GIS ward mapping queried directly from SQLite database
 """
 
 import os
+import json
 import sqlite3
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
@@ -26,23 +27,6 @@ from fastapi import (
     status
 )
 from pydantic import BaseModel, Field
-
-# ---------------------------------------------------------------------------
-# Safe Import of Shared DB Models from schema.py (with non-breaking fallbacks)
-# ---------------------------------------------------------------------------
-try:
-    from ..models.schema import User, Complaint
-except (ImportError, ValueError):
-    try:
-        from models.schema import User, Complaint
-    except (ImportError, ValueError):
-        class User:
-            """Fallback stub if schema.py is under concurrent development."""
-            pass
-
-        class Complaint:
-            """Fallback stub if schema.py is under concurrent development."""
-            pass
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +117,44 @@ def init_db():
                 lat REAL NOT NULL,
                 lon REAL NOT NULL,
                 timestamp TEXT NOT NULL
+            )
+        """)
+
+        # 4. Weather Alerts Table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS weather_alerts (
+                alert_id TEXT PRIMARY KEY,
+                alert_type TEXT NOT NULL,
+                severity TEXT NOT NULL,
+                headline TEXT NOT NULL,
+                headline_marathi TEXT NOT NULL,
+                description TEXT NOT NULL,
+                temperature_celsius REAL NOT NULL,
+                feels_like_celsius REAL NOT NULL,
+                humidity_pct INTEGER NOT NULL,
+                precipitation_prob_pct INTEGER NOT NULL,
+                wind_speed_kmh REAL NOT NULL,
+                uv_index INTEGER NOT NULL,
+                affected_zones TEXT NOT NULL,
+                issued_at TEXT NOT NULL,
+                valid_until TEXT NOT NULL,
+                operational_instructions TEXT NOT NULL,
+                safety_gear_required TEXT NOT NULL
+            )
+        """)
+
+        # 5. Wards GIS Table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS wards (
+                ward_id INTEGER PRIMARY KEY,
+                zone_name TEXT NOT NULL,
+                ward_name TEXT NOT NULL,
+                center_lat REAL NOT NULL,
+                center_lng REAL NOT NULL,
+                active_complaints_count INTEGER NOT NULL,
+                bins_count INTEGER NOT NULL,
+                color_code TEXT NOT NULL,
+                boundary_coordinates TEXT NOT NULL
             )
         """)
 
@@ -251,6 +273,176 @@ def init_db():
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, seed_tasks)
 
+        # Seed weather alerts if table is empty
+        cursor.execute("SELECT COUNT(*) FROM weather_alerts")
+        if cursor.fetchone()[0] == 0:
+            seed_alerts = [
+                (
+                    "NMC-WX-2026-081",
+                    "HEATWAVE",
+                    "HIGH",
+                    "Nagpur Orange Heatwave Advisory: Peak Temp 43.8°C",
+                    "नागपूर उष्णतेची लाट इशारा: तापमान ४३.८° से. पर्यंत पोहोचले",
+                    "IMD Nagpur has issued an Orange Alert. Severe solar radiation expected between 12:00 PM and 03:30 PM across all municipal zones.",
+                    43.8,
+                    46.5,
+                    28,
+                    5,
+                    14.2,
+                    11,
+                    json.dumps([
+                        "Zone 2 - Dharampeth",
+                        "Zone 4 - Dhantoli",
+                        "Zone 6 - Gandhibagh",
+                        "Zone 1 - Laxmi Nagar",
+                        "Zone 3 - Hanuman Nagar"
+                    ]),
+                    "2026-08-16T08:00:00Z",
+                    "2026-08-16T18:00:00Z",
+                    json.dumps([
+                        "Mandatory 15-minute shaded hydration rest every 90 minutes of active route collection.",
+                        "Suspend heavy manual lifting in open sun between 01:00 PM and 03:00 PM.",
+                        "Keep covered tarpaulins over open waste tippers to prevent rapid organic decomposition odors.",
+                        "Carry ORS electrolytic water packets provided at NMC Ward Offices."
+                    ]),
+                    json.dumps([
+                        "Wide-brim UV safety hat",
+                        "Cooling wet neck scarf",
+                        "UV protection goggles",
+                        "2-Litre insulated water flask"
+                    ])
+                ),
+                (
+                    "NMC-WX-2026-082",
+                    "MONSOON_RAIN",
+                    "MODERATE",
+                    "Evening Thunderstorm & Local Waterlogging Advisory",
+                    "संध्याकाळी मेघगर्जनेसह मुसळधार पाऊस व पाणी साचण्याची शक्यता",
+                    "Localized convective rain cells expected over Sitabuldi, Gandhibagh, and Nag river drainage corridors after 04:30 PM.",
+                    33.2,
+                    38.0,
+                    76,
+                    65,
+                    24.0,
+                    6,
+                    json.dumps([
+                        "Zone 4 - Dhantoli",
+                        "Zone 6 - Gandhibagh",
+                        "Zone 10 - Mangalwari"
+                    ]),
+                    "2026-08-16T11:00:00Z",
+                    "2026-08-16T21:00:00Z",
+                    json.dumps([
+                        "Ensure all street corner storm drain grates are cleared of polythene blockage before downpour.",
+                        "Park compactor trucks on elevated concrete platforms away from low-lying culverts.",
+                        "Cover organic waste loads to prevent leachate runoff into public storm drains."
+                    ]),
+                    json.dumps([
+                        "High-visibility reflective rain jacket",
+                        "Anti-skid waterproof safety gumboots",
+                        "Waterproof mobile pouch"
+                    ])
+                )
+            ]
+            cursor.executemany("""
+                INSERT INTO weather_alerts (
+                    alert_id, alert_type, severity, headline, headline_marathi,
+                    description, temperature_celsius, feels_like_celsius, humidity_pct,
+                    precipitation_prob_pct, wind_speed_kmh, uv_index, affected_zones,
+                    issued_at, valid_until, operational_instructions, safety_gear_required
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, seed_alerts)
+
+        # Seed wards if table is empty
+        cursor.execute("SELECT COUNT(*) FROM wards")
+        if cursor.fetchone()[0] == 0:
+            seed_wards = [
+                (
+                    1,
+                    "Zone 1 - Laxmi Nagar",
+                    "Bajaj Nagar & Shankar Nagar",
+                    21.1315,
+                    79.0620,
+                    4,
+                    18,
+                    "#06b6d4",
+                    json.dumps([
+                        [21.138, 79.055], [21.138, 79.070], [21.125, 79.070], [21.125, 79.055]
+                    ])
+                ),
+                (
+                    2,
+                    "Zone 2 - Dharampeth",
+                    "Futala, Ram Nagar & Dharampeth",
+                    21.1470,
+                    79.0580,
+                    6,
+                    24,
+                    "#3b82f6",
+                    json.dumps([
+                        [21.158, 79.045], [21.158, 79.068], [21.140, 79.068], [21.140, 79.045]
+                    ])
+                ),
+                (
+                    3,
+                    "Zone 3 - Hanuman Nagar",
+                    "Reshimbagh & Medical Square",
+                    21.1290,
+                    79.1020,
+                    5,
+                    20,
+                    "#8b5cf6",
+                    json.dumps([
+                        [21.136, 79.095], [21.136, 79.112], [21.120, 79.112], [21.120, 79.095]
+                    ])
+                ),
+                (
+                    4,
+                    "Zone 4 - Dhantoli",
+                    "Congress Nagar & Sitabuldi South",
+                    21.1390,
+                    79.0830,
+                    7,
+                    28,
+                    "#ec4899",
+                    json.dumps([
+                        [21.145, 79.075], [21.145, 79.092], [21.132, 79.092], [21.132, 79.075]
+                    ])
+                ),
+                (
+                    6,
+                    "Zone 6 - Gandhibagh",
+                    "Itwari & Wholesale Mandi",
+                    21.1550,
+                    79.1100,
+                    9,
+                    32,
+                    "#f59e0b",
+                    json.dumps([
+                        [21.163, 79.100], [21.163, 79.122], [21.148, 79.122], [21.148, 79.100]
+                    ])
+                ),
+                (
+                    10,
+                    "Zone 10 - Mangalwari",
+                    "Sadar, Chaoni & Raj Bhavan Area",
+                    21.1650,
+                    79.0810,
+                    3,
+                    16,
+                    "#10b981",
+                    json.dumps([
+                        [21.175, 79.070], [21.175, 79.092], [21.156, 79.092], [21.156, 79.070]
+                    ])
+                )
+            ]
+            cursor.executemany("""
+                INSERT INTO wards (
+                    ward_id, zone_name, ward_name, center_lat, center_lng,
+                    active_complaints_count, bins_count, color_code, boundary_coordinates
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, seed_wards)
+
 
 # Run DB initialization on module load
 init_db()
@@ -298,6 +490,27 @@ class TaskItem(BaseModel):
     proof_image_url: Optional[str] = None
     worker_notes: Optional[str] = None
     completed_at: Optional[str] = None
+
+
+class CreateTaskRequest(BaseModel):
+    title: str = Field(..., example="Commercial Dry Waste Overspill at Sitabuldi")
+    description: Optional[str] = Field("", example="Excess packaging boxes and plastic wrap blocking market lane.")
+    category: str = Field(..., example="Dry Recyclable")
+    priority: str = Field("HIGH", example="HIGH")
+    latitude: float = Field(..., example=21.1448)
+    longitude: float = Field(..., example=79.0837)
+    address: str = Field(..., example="Shop 42, Sitabuldi Main Market Gate 2, Nagpur")
+    landmark: Optional[str] = Field(None, example="Opposite Variety Square Metro Station")
+    ward_number: int = Field(..., example=4)
+    zone_name: str = Field(..., example="Zone 4 - Dhantoli")
+    citizen_name: Optional[str] = Field("NMC Public Desk", example="Anand Kulkarni")
+    citizen_contact: Optional[str] = Field(None, example="+91 98230 11422")
+    assigned_worker_id: Optional[str] = Field("WRK-4089", example="WRK-4089")
+    estimated_duration_mins: Optional[int] = Field(25, example=30)
+    image_url: Optional[str] = Field(
+        "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500&auto=format&fit=crop&q=60",
+        example="https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500"
+    )
 
 
 class TaskStatusUpdateRequest(BaseModel):
@@ -392,92 +605,7 @@ class WardGeoItem(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Static Ward Mapping Constants for Nagpur Municipal Corporation
-# ---------------------------------------------------------------------------
-NAGPUR_WARDS: List[Dict[str, Any]] = [
-    {
-        "ward_id": 1,
-        "zone_name": "Zone 1 - Laxmi Nagar",
-        "ward_name": "Bajaj Nagar & Shankar Nagar",
-        "center_lat": 21.1315,
-        "center_lng": 79.0620,
-        "active_complaints_count": 4,
-        "bins_count": 18,
-        "color_code": "#06b6d4",
-        "boundary_coordinates": [
-            [21.138, 79.055], [21.138, 79.070], [21.125, 79.070], [21.125, 79.055]
-        ]
-    },
-    {
-        "ward_id": 2,
-        "zone_name": "Zone 2 - Dharampeth",
-        "ward_name": "Futala, Ram Nagar & Dharampeth",
-        "center_lat": 21.1470,
-        "center_lng": 79.0580,
-        "active_complaints_count": 6,
-        "bins_count": 24,
-        "color_code": "#3b82f6",
-        "boundary_coordinates": [
-            [21.158, 79.045], [21.158, 79.068], [21.140, 79.068], [21.140, 79.045]
-        ]
-    },
-    {
-        "ward_id": 3,
-        "zone_name": "Zone 3 - Hanuman Nagar",
-        "ward_name": "Reshimbagh & Medical Square",
-        "center_lat": 21.1290,
-        "center_lng": 79.1020,
-        "active_complaints_count": 5,
-        "bins_count": 20,
-        "color_code": "#8b5cf6",
-        "boundary_coordinates": [
-            [21.136, 79.095], [21.136, 79.112], [21.120, 79.112], [21.120, 79.095]
-        ]
-    },
-    {
-        "ward_id": 4,
-        "zone_name": "Zone 4 - Dhantoli",
-        "ward_name": "Congress Nagar & Sitabuldi South",
-        "center_lat": 21.1390,
-        "center_lng": 79.0830,
-        "active_complaints_count": 7,
-        "bins_count": 28,
-        "color_code": "#ec4899",
-        "boundary_coordinates": [
-            [21.145, 79.075], [21.145, 79.092], [21.132, 79.092], [21.132, 79.075]
-        ]
-    },
-    {
-        "ward_id": 6,
-        "zone_name": "Zone 6 - Gandhibagh",
-        "ward_name": "Itwari & Wholesale Mandi",
-        "center_lat": 21.1550,
-        "center_lng": 79.1100,
-        "active_complaints_count": 9,
-        "bins_count": 32,
-        "color_code": "#f59e0b",
-        "boundary_coordinates": [
-            [21.163, 79.100], [21.163, 79.122], [21.148, 79.122], [21.148, 79.100]
-        ]
-    },
-    {
-        "ward_id": 10,
-        "zone_name": "Zone 10 - Mangalwari",
-        "ward_name": "Sadar, Chaoni & Raj Bhavan Area",
-        "center_lat": 21.1650,
-        "center_lng": 79.0810,
-        "active_complaints_count": 3,
-        "bins_count": 16,
-        "color_code": "#10b981",
-        "boundary_coordinates": [
-            [21.175, 79.070], [21.175, 79.092], [21.156, 79.092], [21.156, 79.070]
-        ]
-    }
-]
-
-
-# ---------------------------------------------------------------------------
-# Database Model Helper Converter
+# Database Model Helper Converters
 # ---------------------------------------------------------------------------
 def row_to_task_item(row: sqlite3.Row) -> TaskItem:
     """Converts a SQLite task row into a Pydantic TaskItem."""
@@ -512,6 +640,44 @@ def row_to_task_item(row: sqlite3.Row) -> TaskItem:
     )
 
 
+def row_to_weather_alert(row: sqlite3.Row) -> WeatherAlertItem:
+    """Converts a SQLite weather_alert row into a Pydantic WeatherAlertItem."""
+    return WeatherAlertItem(
+        alert_id=row["alert_id"],
+        alert_type=row["alert_type"],
+        severity=row["severity"],
+        headline=row["headline"],
+        headline_marathi=row["headline_marathi"],
+        description=row["description"],
+        temperature_celsius=row["temperature_celsius"],
+        feels_like_celsius=row["feels_like_celsius"],
+        humidity_pct=row["humidity_pct"],
+        precipitation_prob_pct=row["precipitation_prob_pct"],
+        wind_speed_kmh=row["wind_speed_kmh"],
+        uv_index=row["uv_index"],
+        affected_zones=json.loads(row["affected_zones"]),
+        issued_at=row["issued_at"],
+        valid_until=row["valid_until"],
+        operational_instructions=json.loads(row["operational_instructions"]),
+        safety_gear_required=json.loads(row["safety_gear_required"])
+    )
+
+
+def row_to_ward_geo_item(row: sqlite3.Row) -> WardGeoItem:
+    """Converts a SQLite wards row into a Pydantic WardGeoItem."""
+    return WardGeoItem(
+        ward_id=row["ward_id"],
+        zone_name=row["zone_name"],
+        ward_name=row["ward_name"],
+        center_lat=row["center_lat"],
+        center_lng=row["center_lng"],
+        active_complaints_count=row["active_complaints_count"],
+        bins_count=row["bins_count"],
+        color_code=row["color_code"],
+        boundary_coordinates=json.loads(row["boundary_coordinates"])
+    )
+
+
 # ---------------------------------------------------------------------------
 # AI Segregation Inference Hook
 # ---------------------------------------------------------------------------
@@ -524,8 +690,7 @@ def analyze_waste_image(file_path: str, category_hint: Optional[str] = None) -> 
         session = ort.InferenceSession("models/yolov8_waste_segregation.onnx")
         outputs = session.run(None, {"images": preprocessed_tensor})
     """
-    # Deterministic inference based on file size and category hint for realistic field audits
-    file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 1024
+    # Deterministic inference based on category hint and file characteristics for realistic field audits
     hint = str(category_hint or "").upper()
 
     if "WET" in hint:
@@ -600,6 +765,10 @@ def analyze_waste_image(file_path: str, category_hint: Optional[str] = None) -> 
         "dry_recyclable_pct": dry,
         "sanitary_hazardous_pct": sanitary,
         "unsegregated_contaminant_pct": unseg,
+        "wet_pct": wet,
+        "dry_pct": dry,
+        "sanitary_pct": sanitary,
+        "contaminant_pct": unseg,
         "detected_items": detected,
         "contaminants_found": contaminants,
         "ai_confidence": 0.96,
@@ -612,6 +781,123 @@ def analyze_waste_image(file_path: str, category_hint: Optional[str] = None) -> 
 # ---------------------------------------------------------------------------
 # API Routes (Database Driven)
 # ---------------------------------------------------------------------------
+
+@router.post(
+    "/tasks",
+    response_model=TaskItem,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create & Dispatch New Sanitation Task",
+    description="Inserts a new sanitation work order/complaint into SQLite database and assigns to a worker."
+)
+def create_task(payload: CreateTaskRequest):
+    new_id = f"TSK-NGP-{int(datetime.now().timestamp() * 1000) % 1000000:06d}"
+    ticket_no = f"NMC-2026-{int(datetime.now().timestamp() * 100) % 10000:04d}"
+    assigned_at = datetime.now(timezone.utc).isoformat()
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO tasks (
+                id, ticket_no, title, description, category, priority, status,
+                lat, lon, address, landmark, ward_number, zone_name,
+                citizen_name, citizen_contact, assigned_worker_id, assigned_at,
+                estimated_duration_mins, ai_purity_score, verification_status,
+                bonus_awarded, image_url, proof_image_url, worker_notes, completed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            new_id, ticket_no, payload.title, payload.description or "",
+            payload.category, payload.priority.upper(), "PENDING",
+            payload.latitude, payload.longitude, payload.address, payload.landmark,
+            payload.ward_number, payload.zone_name, payload.citizen_name or "NMC Public Desk",
+            payload.citizen_contact or "", payload.assigned_worker_id or "WRK-4089",
+            assigned_at, payload.estimated_duration_mins or 25,
+            None, None, 0.0, payload.image_url, None, None, None
+        ))
+
+        cursor.execute("SELECT * FROM tasks WHERE id = ?", (new_id,))
+        row = cursor.fetchone()
+        return row_to_task_item(row)
+
+
+@router.post(
+    "/tasks/report",
+    response_model=TaskItem,
+    status_code=status.HTTP_201_CREATED,
+    summary="Report & Log New Waste Task with Live Camera Photo",
+    description="Captures live camera photo, saves to uploads, and inserts new task into SQLite database."
+)
+async def report_waste_task(
+    title: str = Form(..., description="Task title or waste description"),
+    description: Optional[str] = Form("", description="Detailed observation notes"),
+    category: str = Form("Wet Organic", description="Waste category e.g. Wet Organic, Dry Recyclable"),
+    priority: str = Form("HIGH", description="Priority level: CRITICAL, HIGH, MEDIUM, LOW"),
+    latitude: float = Form(..., description="GPS latitude"),
+    longitude: float = Form(..., description="GPS longitude"),
+    address: str = Form(..., description="Street location address"),
+    landmark: Optional[str] = Form(None, description="Nearby landmark"),
+    ward_number: int = Form(2, description="NMC ward number"),
+    zone_name: str = Form("Zone 2 - Dharampeth", description="Administrative zone name"),
+    citizen_name: Optional[str] = Form("Field Worker Spot Report", description="Reporter identifier"),
+    citizen_contact: Optional[str] = Form(None, description="Contact phone"),
+    assigned_worker_id: Optional[str] = Form("WRK-4089", description="Assigned worker ID"),
+    estimated_duration_mins: Optional[int] = Form(25, description="Estimated clearance duration"),
+    image: Optional[UploadFile] = File(None, description="Live camera snapshot of the waste spot")
+):
+    new_id = f"TSK-NGP-{int(datetime.now().timestamp() * 1000) % 1000000:06d}"
+    ticket_no = f"NMC-2026-{int(datetime.now().timestamp() * 100) % 10000:04d}"
+    assigned_at = datetime.now(timezone.utc).isoformat()
+    image_url = None
+
+    # Process and save camera photo if provided
+    if image is not None:
+        contents = await image.read()
+        if len(contents) > 0:
+            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+            sanitized_ticket = ticket_no.replace("-", "_").replace(" ", "_")
+            filename = f"{sanitized_ticket}_{timestamp_str}.jpg"
+            saved_file_path = os.path.join(UPLOAD_AUDITS_DIR, filename)
+
+            with open(saved_file_path, "wb") as f:
+                f.write(contents)
+
+            image_url = f"/uploads/audits/{filename}"
+
+    if not image_url:
+        # High-resolution contextual fallback matching category
+        cat_lower = category.lower()
+        if "dry" in cat_lower or "plastic" in cat_lower:
+            image_url = "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500&auto=format&fit=crop&q=60"
+        elif "wet" in cat_lower or "food" in cat_lower or "organic" in cat_lower:
+            image_url = "https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=500&auto=format&fit=crop&q=60"
+        elif "hazard" in cat_lower or "sanitary" in cat_lower or "medical" in cat_lower:
+            image_url = "https://images.unsplash.com/photo-1584744982491-665216d95f8b?w=500&auto=format&fit=crop&q=60"
+        else:
+            image_url = "https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?w=500&auto=format&fit=crop&q=60"
+
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO tasks (
+                id, ticket_no, title, description, category, priority, status,
+                lat, lon, address, landmark, ward_number, zone_name,
+                citizen_name, citizen_contact, assigned_worker_id, assigned_at,
+                estimated_duration_mins, ai_purity_score, verification_status,
+                bonus_awarded, image_url, proof_image_url, worker_notes, completed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            new_id, ticket_no, title, description or "",
+            category, priority.upper(), "PENDING",
+            latitude, longitude, address, landmark,
+            ward_number, zone_name, citizen_name or "Field Worker Spot Report",
+            citizen_contact or "", assigned_worker_id or "WRK-4089",
+            assigned_at, estimated_duration_mins or 25,
+            None, None, 0.0, image_url, None, None, None
+        ))
+
+        cursor.execute("SELECT * FROM tasks WHERE id = ?", (new_id,))
+        row = cursor.fetchone()
+        return row_to_task_item(row)
+
 
 @router.get(
     "/tasks",
@@ -890,80 +1176,17 @@ def get_latest_telemetry(truck_no: str = "MH-31-EQ-9104"):
 @router.get(
     "/weather-alerts",
     response_model=List[WeatherAlertItem],
-    summary="Real-Time Nagpur Weather & Disaster Safety Alerts",
-    description="Fetches live Nagpur IMD meteorological advisories, heatwave warnings, monsoon waterlogging alerts, and operational safety directives for field workers."
+    summary="Real-Time Nagpur Weather & Disaster Safety Alerts from DB",
+    description="Fetches live Nagpur IMD meteorological advisories, heatwave warnings, monsoon waterlogging alerts from SQLite database."
 )
 def get_weather_alerts(
     zone: Optional[str] = None
 ):
-    alerts: List[WeatherAlertItem] = [
-        WeatherAlertItem(
-            alert_id="NMC-WX-2026-081",
-            alert_type="HEATWAVE",
-            severity="HIGH",
-            headline="Nagpur Orange Heatwave Advisory: Peak Temp 43.8°C",
-            headline_marathi="नागपूर उष्णतेची लाट इशारा: तापमान ४३.८° से. पर्यंत पोहोचले",
-            description="IMD Nagpur has issued an Orange Alert. Severe solar radiation expected between 12:00 PM and 03:30 PM across all municipal zones.",
-            temperature_celsius=43.8,
-            feels_like_celsius=46.5,
-            humidity_pct=28,
-            precipitation_prob_pct=5,
-            wind_speed_kmh=14.2,
-            uv_index=11,
-            affected_zones=[
-                "Zone 2 - Dharampeth",
-                "Zone 4 - Dhantoli",
-                "Zone 6 - Gandhibagh",
-                "Zone 1 - Laxmi Nagar",
-                "Zone 3 - Hanuman Nagar"
-            ],
-            issued_at="2026-08-16T08:00:00Z",
-            valid_until="2026-08-16T18:00:00Z",
-            operational_instructions=[
-                "Mandatory 15-minute shaded hydration rest every 90 minutes of active route collection.",
-                "Suspend heavy manual lifting in open sun between 01:00 PM and 03:00 PM.",
-                "Keep covered tarpaulins over open waste tippers to prevent rapid organic decomposition odors.",
-                "Carry ORS electrolytic water packets provided at NMC Ward Offices."
-            ],
-            safety_gear_required=[
-                "Wide-brim UV safety hat",
-                "Cooling wet neck scarf",
-                "UV protection goggles",
-                "2-Litre insulated water flask"
-            ]
-        ),
-        WeatherAlertItem(
-            alert_id="NMC-WX-2026-082",
-            alert_type="MONSOON_RAIN",
-            severity="MODERATE",
-            headline="Evening Thunderstorm & Local Waterlogging Advisory",
-            headline_marathi="संध्याकाळी मेघगर्जनेसह मुसळधार पाऊस व पाणी साचण्याची शक्यता",
-            description="Localized convective rain cells expected over Sitabuldi, Gandhibagh, and Nag river drainage corridors after 04:30 PM.",
-            temperature_celsius=33.2,
-            feels_like_celsius=38.0,
-            humidity_pct=76,
-            precipitation_prob_pct=65,
-            wind_speed_kmh=24.0,
-            uv_index=6,
-            affected_zones=[
-                "Zone 4 - Dhantoli",
-                "Zone 6 - Gandhibagh",
-                "Zone 10 - Mangalwari"
-            ],
-            issued_at="2026-08-16T11:00:00Z",
-            valid_until="2026-08-16T21:00:00Z",
-            operational_instructions=[
-                "Ensure all street corner storm drain grates are cleared of polythene blockage before downpour.",
-                "Park compactor trucks on elevated concrete platforms away from low-lying culverts.",
-                "Cover organic waste loads to prevent leachate runoff into public storm drains."
-            ],
-            safety_gear_required=[
-                "High-visibility reflective rain jacket",
-                "Anti-skid waterproof safety gumboots",
-                "Waterproof mobile pouch"
-            ]
-        )
-    ]
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM weather_alerts")
+        rows = cursor.fetchall()
+        alerts = [row_to_weather_alert(r) for r in rows]
 
     if zone and isinstance(zone, str):
         alerts = [
@@ -1053,11 +1276,15 @@ def get_worker_stats(
 @router.get(
     "/wards",
     response_model=List[WardGeoItem],
-    summary="Nagpur Sanitation Wards & Geo-Coordinates",
-    description="Returns geo-coordinates and administrative zone boundaries of Nagpur for Leaflet GIS mapping."
+    summary="Nagpur Sanitation Wards & Geo-Coordinates from DB",
+    description="Returns geo-coordinates and administrative zone boundaries of Nagpur from SQLite database for Leaflet GIS mapping."
 )
 def get_nagpur_wards():
-    return NAGPUR_WARDS
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM wards ORDER BY ward_id ASC")
+        rows = cursor.fetchall()
+        return [row_to_ward_geo_item(r) for r in rows]
 
 
 @router.get(
@@ -1072,6 +1299,8 @@ def worker_health_check():
         task_count = cursor.fetchone()[0]
         cursor.execute("SELECT COUNT(*) FROM telemetry")
         telemetry_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM wards")
+        wards_count = cursor.fetchone()[0]
 
     return {
         "status": "healthy",
@@ -1080,5 +1309,6 @@ def worker_health_check():
         "db_path": DB_PATH,
         "active_tasks_count": task_count,
         "telemetry_records_count": telemetry_count,
+        "wards_count": wards_count,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }

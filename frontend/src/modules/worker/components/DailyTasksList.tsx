@@ -8,6 +8,7 @@ interface DailyTasksListProps {
   onVerifyTask: (task: DailyTask) => void;
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onNavigateToMap: (task: DailyTask) => void;
+  onOpenCreateTask?: () => void;
 }
 
 export const DailyTasksList: React.FC<DailyTasksListProps> = ({
@@ -16,7 +17,8 @@ export const DailyTasksList: React.FC<DailyTasksListProps> = ({
   onSelectTask,
   onVerifyTask,
   onStatusChange,
-  onNavigateToMap
+  onNavigateToMap,
+  onOpenCreateTask
 }) => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterPriority, setFilterPriority] = useState<string>('ALL');
@@ -98,28 +100,47 @@ export const DailyTasksList: React.FC<DailyTasksListProps> = ({
     <div className="space-y-4">
       {/* Search & Filter Header */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-lg space-y-3">
-        {/* Search Input */}
-        <div className="relative">
-          <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-sm">
-            🔍
-          </span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder={
-              language === 'mr'
-                ? 'तक्रार क्रमांक, परिसर किंवा नागरिक शोधा...'
-                : 'Search by ticket #, Sitabuldi, Futala, Dharampeth...'
-            }
-            className="w-full pl-9 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-          />
-          {searchQuery && (
+        {/* Search Row + Log Spot Action Button */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500 text-sm">
+              🔍
+            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={
+                language === 'mr'
+                  ? 'तक्रार क्रमांक, परिसर किंवा नागरिक शोधा...'
+                  : 'Search by ticket #, Sitabuldi, Futala, Dharampeth...'
+              }
+              className="w-full pl-9 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-white text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {onOpenCreateTask && (
             <button
-              onClick={() => setSearchQuery('')}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-white text-xs"
+              type="button"
+              onClick={onOpenCreateTask}
+              className="px-3.5 py-2.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black rounded-xl text-xs shadow-md shadow-amber-500/20 hover:brightness-110 active:scale-95 transition-all flex items-center gap-1.5 flex-shrink-0"
+              title="Click photo to report new waste spot"
             >
-              ✕
+              <span>📷</span>
+              <span className="hidden sm:inline">
+                {language === 'mr' ? '+ स्पॉट नोंदवा' : '+ Log Waste Spot'}
+              </span>
+              <span className="sm:hidden">
+                {language === 'mr' ? '+ नोंदवा' : '+ Log'}
+              </span>
             </button>
           )}
         </div>

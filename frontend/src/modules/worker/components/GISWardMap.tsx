@@ -8,6 +8,7 @@ interface GISWardMapProps {
   onSelectTask: (task: DailyTask) => void;
   onVerifyTask: (task: DailyTask) => void;
   selectedTaskId?: string | null;
+  workerCoordinates?: [number, number];
 }
 
 // Global declaration for Leaflet injected window
@@ -23,7 +24,8 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
   language,
   onSelectTask,
   onVerifyTask,
-  selectedTaskId
+  selectedTaskId,
+  workerCoordinates
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -39,8 +41,8 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
   const [showRoute, setShowRoute] = useState<boolean>(true);
   const [selectedTask, setSelectedTask] = useState<DailyTask | null>(null);
 
-  // Worker's simulated live location in Nagpur (Zone 2 Dharampeth)
-  const workerLocation: [number, number] = [21.1470, 79.0580];
+  // Worker's live GPS location (defaults to Zone 2 Dharampeth if GPS disabled)
+  const workerLocation: [number, number] = workerCoordinates || [21.1470, 79.0580];
 
   // 1. Dynamically Load Leaflet Scripts & CSS if not already in DOM
   useEffect(() => {
@@ -130,6 +132,13 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
       mapInstanceRef.current = null;
     };
   }, [mapLoaded]);
+
+  // Update Worker Live GPS Marker when coordinates update
+  useEffect(() => {
+    if (userMarkerRef.current && workerCoordinates) {
+      userMarkerRef.current.setLatLng(workerCoordinates);
+    }
+  }, [workerCoordinates]);
 
   // Update Tile Layer Helper
   const updateTileLayer = (map: any, style: 'dark' | 'streets' | 'satellite') => {
@@ -278,7 +287,7 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
 
       routeLayerRef.current.addLayer(polyline);
     }
-  }, [mapLoaded, tasks, activeZoneFilter, showRoute, selectedTaskId]);
+  }, [mapLoaded, tasks, activeZoneFilter, showRoute, selectedTaskId, workerCoordinates]);
 
   const handleCenterOnWorker = () => {
     if (mapInstanceRef.current) {

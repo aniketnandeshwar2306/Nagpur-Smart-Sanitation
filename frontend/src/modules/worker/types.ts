@@ -27,6 +27,7 @@ export interface DailyTask {
   estimated_duration_mins: number;
   segregation_score?: number | null;
   verification_status?: 'PASSED' | 'WARNING' | 'FAILED' | null;
+  bonus_awarded?: number;
   image_url?: string | null;
   proof_image_url?: string | null;
   worker_notes?: string | null;
