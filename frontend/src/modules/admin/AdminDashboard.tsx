@@ -81,6 +81,7 @@ const statusBadge = (status: string) => {
     resolved: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
     active: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
     on_duty: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    on_leave: 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800',
     idle: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700',
     off_duty: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700',
     maintenance: 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 border-rose-200 dark:border-rose-800',
@@ -97,6 +98,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const [complaints, setComplaints] = useState<Complaint[]>(INITIAL_COMPLAINTS);
   const [workers, setWorkers] = useState<Worker[]>(INITIAL_WORKERS);
+  const [leaveRequests, setLeaveRequests] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('nss_worker_leaves');
+      return cached ? JSON.parse(cached) : [
+        {
+          leave_id: 'LV-2026-9041',
+          worker_id: 'W-002',
+          worker_name: 'Suresh Meshram',
+          leave_type: 'Casual Leave',
+          start_date: '2026-08-20',
+          end_date: '2026-08-21',
+          reason: 'Family ceremony in Wardha',
+          days: 2,
+          status: 'Approved',
+        }
+      ];
+    } catch {
+      return [];
+    }
+  });
 
   // Modals state
   const [assignModalTicket, setAssignModalTicket] = useState<Complaint | null>(null);
@@ -115,8 +136,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     vehicle: 'NMC Tipper',
   });
 
-  // Fetch live complaints & workers from MongoDB on load
-  useEffect(() => {
+  const loadAllData = () => {
+    // 1. Fetch complaints
     fetch(`${API_BASE_URL}/api/admin/complaints`)
       .then(res => res.json())
       .then(data => {
@@ -139,14 +160,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       })
       .catch(() => {});
 
+    // 2. Fetch leaves
+    fetch(`${API_BASE_URL}/api/admin/leaves`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setLeaveRequests(prev => {
+            const seen = new Set(data.map((l: any) => l.leave_id));
+            return [...data, ...prev.filter(p => !seen.has(p.leave_id))];
+          });
+        }
+      })
+      .catch(() => {});
+
+    // 3. Fetch workers
     fetch(`${API_BASE_URL}/api/worker/workers`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
-          setWorkers(data);
+          const localLeaves = JSON.parse(localStorage.getItem('nss_worker_leaves') || '[]');
+          const onLeaveIds = new Set(localLeaves.filter((l: any) => l.status === 'Approved' || l.status === 'Pending Approval').map((l: any) => l.worker_id));
+          const synced = data.map((w: Worker) => ({
+            ...w,
+            status: (onLeaveIds.has(w.id) || w.status === 'on_leave') ? 'on_leave' : w.status
+          }));
+          setWorkers(synced);
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadAllData();
   }, []);
 
   // Listen to live complaints from citizen submissions
@@ -180,6 +225,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 3000);
+  };
+
+  const handleUpdateLeaveStatus = async (leaveId: string, workerId: string, newStatus: 'Approved' | 'Rejected') => {
+    try {
+      await fetch(`${API_BASE_URL}/api/admin/leaves/${encodeURIComponent(leaveId)}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch {}
+
+    setLeaveRequests(prev => prev.map(l => l.leave_id === leaveId ? { ...l, status: newStatus } : l));
+    setWorkers(prev => prev.map(w => w.id === workerId ? { ...w, status: newStatus === 'Approved' ? 'on_leave' : 'active' } : w));
+    showToast(`✓ Leave application ${leaveId} marked as ${newStatus}!`);
   };
 
   const handleAssignSubmit = async (e: React.FormEvent) => {
@@ -478,6 +537,90 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               >
                 <span>+</span> Add Worker
               </button>
+            </div>
+
+            {/* ── WORKER LEAVE REQUESTS MANAGEMENT ── */}
+            <div className="eco-card p-6 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <span>🏖️</span> Field Crew Leave Requests & Approvals
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Review incoming leave applications. Approved leaves automatically update worker duty status.
+                  </p>
+                </div>
+                <div className="text-xs font-bold px-3 py-1 bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 rounded-xl border border-amber-200 dark:border-amber-800">
+                  {leaveRequests.filter(l => l.status === 'Pending Approval').length} Pending Requests
+                </div>
+              </div>
+
+              {leaveRequests.length === 0 ? (
+                <div className="p-6 text-center text-xs text-slate-400">No leave requests currently on file.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-2.5 px-4">Leave ID</th>
+                        <th className="py-2.5 px-4">Worker</th>
+                        <th className="py-2.5 px-4">Leave Type</th>
+                        <th className="py-2.5 px-4">Period</th>
+                        <th className="py-2.5 px-4">Days</th>
+                        <th className="py-2.5 px-4">Reason</th>
+                        <th className="py-2.5 px-4">Status</th>
+                        <th className="py-2.5 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {leaveRequests.map(l => (
+                        <tr key={l.leave_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-4 font-mono font-bold text-emerald-700 dark:text-emerald-300">{l.leave_id}</td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-800 dark:text-slate-100">{l.worker_name}</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{l.worker_id}</div>
+                          </td>
+                          <td className="py-3 px-4 font-semibold text-slate-700 dark:text-slate-300">{l.leave_type}</td>
+                          <td className="py-3 px-4 text-slate-600 dark:text-slate-400">{l.start_date} &rarr; {l.end_date}</td>
+                          <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-100">{l.days || 1}d</td>
+                          <td className="py-3 px-4 text-slate-600 dark:text-slate-400 max-w-xs truncate">{l.reason}</td>
+                          <td className="py-3 px-4">
+                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                              l.status === 'Approved'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                                : l.status === 'Rejected'
+                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                                : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                            }`}>
+                              {l.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {l.status === 'Pending Approval' ? (
+                              <div className="flex justify-end gap-1.5">
+                                <button
+                                  onClick={() => handleUpdateLeaveStatus(l.leave_id, l.worker_id, 'Approved')}
+                                  className="text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateLeaveStatus(l.leave_id, l.worker_id, 'Rejected')}
+                                  className="text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 font-medium">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="eco-card overflow-hidden">

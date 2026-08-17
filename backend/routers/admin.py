@@ -156,3 +156,46 @@ def get_zone_analytics(db=Depends(get_db)):
         {"name": "Zone D – Laxmi Nagar", "ward": 31, "bins": 240, "activeBins": 230, "fillAvg": 61, "activeVehicles": 5, "supervisor": "Anjali Bhatt", "diversion": 88},
     ]
     return zones
+
+
+@router.get("/leaves")
+def get_all_worker_leaves(status: Optional[str] = None, db=Depends(get_db)):
+    """Fetch all worker leave applications from MongoDB."""
+    query = {}
+    if status:
+        query["status"] = status
+
+    leaves = []
+    if db is not None:
+        try:
+            leaves = list(db.worker_leaves.find(query, {"_id": 0}).sort("applied_at", -1))
+        except Exception as e:
+            print("[Admin Leaves Fetch Error]", e)
+
+    return leaves
+
+
+@router.patch("/leaves/{leave_id}/status")
+def update_worker_leave_status(leave_id: str, payload: dict, db=Depends(get_db)):
+    """Approve or reject a worker leave application in MongoDB."""
+    new_status = payload.get("status", "Approved")
+    leave_doc = db.worker_leaves.find_one({"leave_id": leave_id})
+    if not leave_doc:
+        raise HTTPException(status_code=404, detail="Leave record not found")
+
+    worker_id = leave_doc.get("worker_id", "W-002")
+
+    db.worker_leaves.update_one(
+        {"leave_id": leave_id},
+        {"$set": {"status": new_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+
+    # If approved, keep worker on_leave. If rejected, restore to active.
+    worker_target_status = "on_leave" if new_status == "Approved" else "active"
+    db.workers.update_one({"id": worker_id}, {"$set": {"status": worker_target_status}})
+
+    return {
+        "status": "success",
+        "message": f"Leave {leave_id} updated to {new_status}",
+        "worker_status": worker_target_status
+    }

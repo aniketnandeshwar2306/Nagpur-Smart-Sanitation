@@ -400,12 +400,18 @@ class WorkerCreateRequest(BaseModel):
     vehicle: Optional[str] = "NMC Tipper"
 
 @router.get("/list")
+@router.get("/workers")
 def get_workers_list(db=Depends(get_db)):
     """Fetch list of all municipal sanitation workers for Admin Registry."""
     workers = []
     try:
-        docs = list(db.workers.find({}, {"_id": 0}))
-        workers = docs
+        workers = list(db.workers.find({}, {"_id": 0}))
+        # Check active leaves to ensure dynamic status is reflected
+        active_leaves = list(db.worker_leaves.find({"status": {"$in": ["Pending Approval", "Approved"]}}, {"_id": 0}))
+        leave_worker_ids = {l.get("worker_id") for l in active_leaves if l.get("worker_id")}
+        for w in workers:
+            if w.get("id") in leave_worker_ids:
+                w["status"] = "on_leave"
     except Exception as e:
         print("[Fetch Workers List Error]", e)
 
@@ -532,9 +538,10 @@ def get_worker_leaves(worker_id: Optional[str] = None, db=Depends(get_db)):
 def apply_worker_leave(payload: dict, db=Depends(get_db)):
     """Record a worker leave application in MongoDB."""
     leave_id = payload.get("leave_id") or f"LV-2026-{random.randint(1000, 9999)}"
+    w_id = payload.get("worker_id", "W-002")
     record = {
         "leave_id": leave_id,
-        "worker_id": payload.get("worker_id", "W-002"),
+        "worker_id": w_id,
         "worker_name": payload.get("worker_name", "Suresh Meshram"),
         "leave_type": payload.get("leave_type", "Casual Leave"),
         "start_date": payload.get("start_date", "2026-08-20"),
@@ -548,6 +555,8 @@ def apply_worker_leave(payload: dict, db=Depends(get_db)):
     if db is not None:
         try:
             db.worker_leaves.insert_one(record)
+            # Mark worker as on_leave in registry
+            db.workers.update_one({"id": w_id}, {"$set": {"status": "on_leave"}})
         except Exception as e:
             print("[Apply Leave Error]", e)
 
