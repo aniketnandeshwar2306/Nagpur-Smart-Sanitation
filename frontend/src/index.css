@@ -1,8 +1,284 @@
 @import "tailwindcss";
 
-body {
-  margin: 0;
-  background-color: #0f172a;
-  color: #f8fafc;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+@layer base {
+  :root {
+    --eco-bg: #F5F5F0;
+    --eco-card: #FFFFFF;
+    --eco-border: #E5E8E0;
+    --eco-forest: #2D5A3F;
+    --eco-forest-dark: #21432E;
+    --eco-forest-soft: #E3EBD8;
+    --eco-sage: #C8E8CD;
+    --eco-sage-dark: #1F402B;
+    --eco-tan: #8B6D4C;
+    --eco-tan-light: #F4E8D3;
+    --eco-charcoal: #1A2E22;
+    --eco-muted: #5C6B61;
+    --eco-text-main: #1A2E22;
+    --eco-text-sub: #5C6B61;
+  }
+
+  .dark {
+    --eco-bg: #0B131E;
+    --eco-card: #152232;
+    --eco-border: #233549;
+    --eco-charcoal: #F8FAFC;
+    --eco-muted: #94A3B8;
+    --eco-text-main: #F8FAFC;
+    --eco-text-sub: #CBD5E1;
+  }
+
+  body {
+    margin: 0;
+    font-size: 16px;
+    background-color: #F5F5F0;
+    color: #1A2E22;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  .dark body, body.dark {
+    background-color: #0B131E;
+    color: #F8FAFC;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-serif-heading {
+    font-family: 'Playfair Display', Georgia, serif;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    color: #1A2E22;
+  }
+
+  /* Universal Light Mode Heading & Subtitle Enforcement */
+  html:not(.dark) h1:not(.text-white-forced),
+  html:not(.dark) h2:not(.text-white-forced),
+  html:not(.dark) h3:not(.text-white-forced),
+  html:not(.dark) h4:not(.text-white-forced),
+  body:not(.dark) h1:not(.text-white-forced),
+  body:not(.dark) h2:not(.text-white-forced),
+  body:not(.dark) h3:not(.text-white-forced),
+  body:not(.dark) h4:not(.text-white-forced) {
+    color: #1A2E22 !important;
+  }
+
+  html:not(.dark) h1 + p,
+  html:not(.dark) h2 + p,
+  html:not(.dark) h3 + p,
+  body:not(.dark) h1 + p,
+  body:not(.dark) h2 + p,
+  body:not(.dark) h3 + p {
+    color: #334155 !important; /* Dark Slate 700 for high visibility */
+  }
+
+  /* Exceptions for explicit dark card containers in Light Mode */
+  html:not(.dark) .bg-slate-900 h1,
+  html:not(.dark) .bg-slate-900 h2,
+  html:not(.dark) .bg-slate-900 h3,
+  html:not(.dark) .bg-slate-900 h4,
+  html:not(.dark) .bg-slate-950 h1,
+  html:not(.dark) .bg-slate-950 h2,
+  html:not(.dark) [class*="bg-\[\#2D5A3F\]"] h1,
+  html:not(.dark) [class*="bg-\[\#2D5A3F\]"] h2,
+  html:not(.dark) .bg-black h1,
+  html:not(.dark) .bg-black h2 {
+    color: #FFFFFF !important;
+  }
+
+  html:not(.dark) .bg-slate-900 p,
+  html:not(.dark) .bg-slate-950 p,
+  html:not(.dark) [class*="bg-\[\#2D5A3F\]"] p,
+  html:not(.dark) .bg-black p {
+    color: #94A3B8 !important;
+  }
+
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6,
+  body.dark h1, body.dark h2, body.dark h3, body.dark h4, body.dark h5, body.dark h6 {
+    color: #FFFFFF !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────────
+   CRITICAL FONT COLOR & CONTRAST OVERRIDES FOR HIGH VISIBILITY IN DARK MODE
+   ────────────────────────────────────────────────────────────────────────────── */
+
+/* Dark Mode Overrides for Hardcoded Dark Colors -> Convert to Bright Visible Colors */
+.dark [class*="text-\[\#1A2E22\]"], body.dark [class*="text-\[\#1A2E22\]"] {
+  color: #FFFFFF !important;
+}
+
+.dark [class*="text-\[\#2D5A3F\]"], body.dark [class*="text-\[\#2D5A3F\]"] {
+  color: #4ADE80 !important; /* Bright neon emerald green */
+}
+
+.dark [class*="text-\[\#5C6B61\]"], body.dark [class*="text-\[\#5C6B61\]"] {
+  color: #CBD5E1 !important; /* Light slate text */
+}
+
+.dark [class*="text-\[\#8B6D4C\]"], body.dark [class*="text-\[\#8B6D4C\]"] {
+  color: #FDE047 !important; /* Bright yellow for dark mode */
+}
+
+.dark [class*="text-\[\#1F402B\]"], body.dark [class*="text-\[\#1F402B\]"] {
+  color: #86EFAC !important;
+}
+
+/* Card Styling */
+.eco-card {
+  background-color: #ffffff;
+  border: 1px solid #E5E8E0;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 24px -2px rgba(26, 46, 34, 0.04), 0 2px 8px -1px rgba(0, 0, 0, 0.02);
+  transition: all 0.25s ease-in-out;
+}
+
+.dark .eco-card, body.dark .eco-card {
+  background-color: #152232 !important;
+  border-color: #233549 !important;
+  color: #F8FAFC !important;
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .eco-card h1, .dark .eco-card h2, .dark .eco-card h3, .dark .eco-card h4,
+body.dark .eco-card h1, body.dark .eco-card h2, body.dark .eco-card h3, body.dark .eco-card h4 {
+  color: #FFFFFF !important;
+}
+
+.dark .eco-card p, body.dark .eco-card p {
+  color: #CBD5E1 !important;
+}
+
+.eco-card:hover {
+  box-shadow: 0 8px 32px -4px rgba(26, 46, 34, 0.07), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+  transform: translateY(-2px);
+}
+
+.dark .eco-card:hover, body.dark .eco-card:hover {
+  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Buttons */
+.eco-button-primary {
+  background-color: #2D5A3F;
+  color: #ffffff;
+  font-weight: 700;
+  border-radius: 9999px;
+  padding: 0.625rem 1.35rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dark .eco-button-primary, body.dark .eco-button-primary {
+  background-color: #22C55E !important;
+  color: #052E16 !important;
+  font-weight: 800 !important;
+}
+
+.eco-button-primary:hover {
+  background-color: #21432E;
+  transform: translateY(-1px);
+}
+
+.eco-button-secondary {
+  background-color: #EBF0E6;
+  color: #1A2E22;
+  font-weight: 600;
+  border-radius: 9999px;
+  padding: 0.625rem 1.35rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dark .eco-button-secondary, body.dark .eco-button-secondary {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  border: 1px solid #334155 !important;
+}
+
+.eco-button-secondary:hover {
+  background-color: #DFE8D8;
+}
+
+.dark .eco-button-secondary:hover, body.dark .eco-button-secondary:hover {
+  background-color: #334155 !important;
+}
+
+/* Badges */
+.eco-badge-green {
+  background-color: #C8E8CD;
+  color: #1F402B;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.dark .eco-badge-green, body.dark .eco-badge-green {
+  background-color: #064E3B !important;
+  color: #6EE7B7 !important;
+  border: 1px solid #047857 !important;
+}
+
+.eco-badge-tan {
+  background-color: #F4E8D3;
+  color: #8B6D4C;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.3rem 0.8rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.dark .eco-badge-tan, body.dark .eco-badge-tan {
+  background-color: #78350F !important;
+  color: #FDE047 !important;
+  border: 1px solid #B45309 !important;
+}
+
+/* Leaflet Popup Dark Mode Fixes */
+.leaflet-popup-content-wrapper {
+  border-radius: 1rem !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.eco-animate-fade {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F5F5F0;
+}
+.dark ::-webkit-scrollbar-track, body.dark ::-webkit-scrollbar-track {
+  background: #0B131E;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb, body.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
 }

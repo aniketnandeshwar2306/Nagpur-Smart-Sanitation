@@ -14,11 +14,12 @@ export interface WasteReportPayload {
 
 export interface AssignedAuthority {
   name: string;
-  role: string;
-  phone: string;
-  email: string;
-  department: string;
-  avatar_icon: string;
+  contact?: string;
+  role?: string;
+  phone?: string;
+  email?: string;
+  department?: string;
+  avatar_icon?: string;
   avatar_url?: string;
 }
 
@@ -38,7 +39,7 @@ export interface ReportResponse {
   severity: number;
   created_at: string;
   image_url?: string;
-  assigned_authority?: AssignedAuthority;
+  assigned_authority?: AssignedAuthority | null;
   timeline?: TimelineEvent[];
 }
 
@@ -60,9 +61,11 @@ export interface RewardTransaction {
 }
 
 export interface RedeemableReward {
+  id: string;
   name: string;
   cost: number;
   icon: string;
+  description?: string;
 }
 
 export interface RewardProfile {
@@ -80,8 +83,10 @@ export interface LeaderboardEntry {
   rank: number;
   name: string;
   points: number;
+  ward?: string;
   tier: string;
-  is_current_user: boolean;
+  streak?: number;
+  is_current_user?: boolean;
 }
 
 export interface SegregationItem {
@@ -91,10 +96,17 @@ export interface SegregationItem {
 }
 
 export interface SegregationCategory {
-  category: string;
+  name: string;
+  icon: string;
   color: string;
-  description: string;
-  items: SegregationItem[];
+  examples: string[];
+  tips: string;
+  do: string[];
+  dont: string[];
+  // Compatibility fields
+  category?: string;
+  description?: string;
+  items?: SegregationItem[];
 }
 
 export interface QuizQuestion {

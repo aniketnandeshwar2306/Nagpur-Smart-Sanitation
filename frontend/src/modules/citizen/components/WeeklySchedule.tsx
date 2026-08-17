@@ -41,8 +41,8 @@ const WeeklySchedule: React.FC = () => {
   return (
     <div className="citizen-fade-in space-y-6 max-w-6xl mx-auto pb-6">
       <div>
-        <h2 className="text-2xl font-bold text-white">📅 Weekly Pickup Timetable</h2>
-        <p className="text-slate-400 text-sm mt-1">Official municipal garbage collection schedule for Dharampeth Ward 14.</p>
+        <h2 className="text-2xl font-bold text-[#1A2E22] dark:text-white">📅 Weekly Pickup Timetable</h2>
+        <p className="text-[#5C6B61] dark:text-slate-300 text-sm mt-1">Official municipal garbage collection schedule for Dharampeth Ward 14.</p>
       </div>
 
       {/* Today's Highlight Banner */}

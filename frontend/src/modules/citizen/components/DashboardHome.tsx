@@ -133,14 +133,14 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
                 <div className="text-xs text-sky-400 font-semibold uppercase tracking-wider mb-1">
                   {nextPickup.is_today ? '📍 Today\'s Pickup' : '📅 Next Pickup'}
                 </div>
-                <div className="text-white font-bold text-xl">{nextPickup.day}</div>
-                <div className="text-slate-400 text-sm mt-1">
+                <div className="text-[#1A2E22] dark:text-white font-bold text-xl">{nextPickup.day}</div>
+                <div className="text-slate-600 dark:text-slate-400 text-sm mt-1">
                   {wasteTypeIcon[nextPickup.waste_type] || '♻️'} {nextPickup.waste_type.charAt(0).toUpperCase() + nextPickup.waste_type.slice(1)} Waste
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-medium text-slate-200">{nextPickup.time_window}</div>
-                <div className="text-xs text-slate-400 mt-1">Truck: {nextPickup.truck_id}</div>
+                <div className="text-sm font-medium text-slate-700 dark:text-slate-200">{nextPickup.time_window}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Truck: {nextPickup.truck_id}</div>
                 <div className="text-xs text-slate-500">{nextPickup.zone}</div>
               </div>
             </div>
@@ -154,8 +154,8 @@ const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
         >
           <span className="text-4xl">♻️</span>
           <div className="flex-1">
-            <div className="font-bold text-white text-base">Learn Waste Segregation</div>
-            <div className="text-xs md:text-sm text-slate-400 mt-0.5">Wet vs. Dry guide &amp; interactive quiz game</div>
+            <div className="font-bold text-[#1A2E22] dark:text-white text-base">Learn Waste Segregation</div>
+            <div className="text-xs md:text-sm text-slate-600 dark:text-slate-400 mt-0.5">Wet vs. Dry guide &amp; interactive quiz game</div>
           </div>
           <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
