@@ -6,6 +6,7 @@ interface AuthModalProps {
   onClose: () => void;
   initialMode?: 'login' | 'register' | 'profile';
   initialRole?: UserRole;
+  onSuccess?: (role: UserRole) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -13,6 +14,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   initialMode = 'login',
   initialRole = 'citizen',
+  onSuccess,
 }) => {
   const { user, isAuthenticated, login, registerCitizen, logout, updateUser } = useAuth();
 
@@ -45,6 +47,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setTimeout(() => {
         setSuccessMsg(null);
         onClose();
+        onSuccess?.(selectedRole);
       }, 1000);
     } else {
       setErrorMsg(res.error || 'Login failed. Please try again.');
@@ -70,6 +73,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setTimeout(() => {
         setSuccessMsg(null);
         onClose();
+        onSuccess?.('citizen');
       }, 1200);
     } else {
       setErrorMsg(res.error || 'Registration failed.');
@@ -84,6 +88,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setTimeout(() => {
       setSuccessMsg(null);
       onClose();
+      onSuccess?.(role);
     }, 800);
   };
 
