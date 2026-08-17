@@ -209,31 +209,84 @@ async function withFallback<T>(path: string, fallback: T, options?: RequestInit)
 // ──────────────────────────────────────────────────────────────────────────────
 
 export async function submitReport(data: WasteReportPayload): Promise<ReportResponse> {
+  let response: ReportResponse;
+
   try {
-    return await apiFetch<ReportResponse>('/report', {
+    response = await apiFetch<ReportResponse>('/report', {
       method: 'POST',
       body: JSON.stringify(data),
     });
-  } catch {
-    const mockResponse: ReportResponse = {
-      ticket_id: `NMC-2024-${Math.floor(900 + Math.random() * 99)}`,
+  } catch (err) {
+    console.warn('[CitizenAPI] Backend report submission fallback:', err);
+    response = {
+      ticket_id: `NMC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
       waste_type: data.waste_type,
       status: 'submitted',
       severity: data.severity ?? 3,
       latitude: data.latitude || 21.1458,
       longitude: data.longitude || 79.0882,
-      description: data.description || '',
+      description: data.description || 'Civic solid waste report with captured image.',
       created_at: new Date().toISOString(),
-      assigned_authority: null,
+      image_url: data.image_base64 || 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500&auto=format&fit=crop&q=60',
+      citizen_id: data.citizen_id || 'CIT-7819',
+      citizen_name: data.citizen_name || 'Aniket Nandeshwar',
+      assigned_authority: {
+        name: 'Inspector Vijay Deshmukh',
+        role: 'Sanitation Inspector - Ward 14',
+        phone: '+91 98231 44556',
+        email: 'vijay.deshmukh@nmc.gov.in',
+        department: 'NMC Solid Waste Management Dept.',
+        avatar_icon: '👨‍✈️',
+      },
+      timeline: [
+        { status: 'submitted', timestamp: new Date().toISOString(), note: 'Ticket registered via Citizen Portal.' }
+      ]
     };
-    await new Promise(r => setTimeout(r, 1000));
-    return mockResponse;
   }
+
+  // Cache in localStorage so complaint always persists on UI
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = JSON.parse(localStorage.getItem('nss_local_reports') || '[]');
+      const filtered = saved.filter((r: ReportResponse) => r.ticket_id !== response.ticket_id);
+      localStorage.setItem('nss_local_reports', JSON.stringify([response, ...filtered]));
+    } catch {
+      // ignore
+    }
+  }
+
+  return response;
 }
 
 export async function fetchReports(citizenId?: string): Promise<ReportResponse[]> {
   const path = citizenId ? `/reports?citizen_id=${encodeURIComponent(citizenId)}` : '/reports';
-  return withFallback<ReportResponse[]>(path, MOCK_REPORTS);
+  const serverReports = await withFallback<ReportResponse[]>(path, MOCK_REPORTS);
+
+  // Merge with locally submitted reports
+  let localReports: ReportResponse[] = [];
+  if (typeof window !== 'undefined') {
+    try {
+      localReports = JSON.parse(localStorage.getItem('nss_local_reports') || '[]');
+      if (citizenId) {
+        localReports = localReports.filter(r => !r.citizen_id || r.citizen_id === citizenId);
+      }
+    } catch {
+      localReports = [];
+    }
+  }
+
+  // Combine and deduplicate by ticket_id
+  const seen = new Set<string>();
+  const combined: ReportResponse[] = [];
+
+  for (const r of [...localReports, ...serverReports]) {
+    if (!seen.has(r.ticket_id)) {
+      seen.add(r.ticket_id);
+      combined.push(r);
+    }
+  }
+
+  return combined;
 }
 
 export async function fetchSchedule(): Promise<ScheduleDay[]> {

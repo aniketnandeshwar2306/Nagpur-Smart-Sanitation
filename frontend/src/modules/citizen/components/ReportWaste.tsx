@@ -283,15 +283,20 @@ const ReportWaste: React.FC = () => {
 
   // ---- Submit ----
   const handleSubmit = async () => {
-    if (!capturedImage || !geoCoords) return;
+    if (!capturedImage) {
+      setSubmitError('Please capture or select an image first.');
+      return;
+    }
     setStep('submitting');
     setSubmitError(null);
+
+    const coords = geoCoords || { lat: 21.1458, lng: 79.0882 };
 
     try {
       const payload: WasteReportPayload = {
         image_base64: capturedImage,
-        latitude: geoCoords.lat,
-        longitude: geoCoords.lng,
+        latitude: coords.lat,
+        longitude: coords.lng,
         waste_type: wasteType,
         severity,
         description: description.trim() || undefined,

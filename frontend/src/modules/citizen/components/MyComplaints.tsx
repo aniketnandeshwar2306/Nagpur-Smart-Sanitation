@@ -79,6 +79,13 @@ export const MyComplaints: React.FC = () => {
 
   useEffect(() => {
     loadReports();
+
+    const handleNew = () => {
+      loadReports();
+    };
+
+    window.addEventListener('complaint-submitted', handleNew);
+    return () => window.removeEventListener('complaint-submitted', handleNew);
   }, [user?.id]);
 
   const handleCopy = (text: string, label: string) => {
