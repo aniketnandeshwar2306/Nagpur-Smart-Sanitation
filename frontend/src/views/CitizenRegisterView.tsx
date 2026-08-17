@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
 interface AuthUser {
@@ -16,8 +16,9 @@ interface CitizenRegisterViewProps {
   isDarkMode: boolean;
   onToggleDarkMode: () => void;
 }
+import { API_BASE_URL } from '../config/api';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = API_BASE_URL;
 
 const NAGPUR_WARDS = [
   'Ward 1 - Laxmi Nagar', 'Ward 2 - Dharampeth', 'Ward 3 - Hanuman Nagar',

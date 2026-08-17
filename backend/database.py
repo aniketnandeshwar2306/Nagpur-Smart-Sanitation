@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+MONGO_URL = os.getenv("MONGODB_URI") or os.getenv("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.getenv("MONGO_DB_NAME", "nagpur_smart_sanitation")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -19,8 +19,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def get_hash(password: str) -> str:
     return pwd_context.hash(password)
 
-client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=3000)
-db = client[DB_NAME]
+try:
+    client = MongoClient(MONGO_URL, serverSelectionTimeoutMS=5000, connectTimeoutMS=10000)
+    db = client[DB_NAME]
+except Exception as e:
+    print(f"[MONGODB CONNECTION WARNING] Could not initialize client: {e}")
+    client = None
+    db = None
 
 def get_db():
     """FastAPI dependency for accessing MongoDB database instance."""

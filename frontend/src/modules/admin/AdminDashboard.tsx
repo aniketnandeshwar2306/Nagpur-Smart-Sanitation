@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import NagpurMap from '../../components/NagpurMap';
+import { API_BASE_URL } from '../../config/api';
 
 export type AdminTab = 'overview' | 'complaints' | 'fleet' | 'workers' | 'zones' | 'reports' | 'settings';
 
@@ -152,7 +153,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     if (!assignModalTicket) return;
 
     try {
-      await fetch(`http://localhost:8000/api/worker/complaints/${assignModalTicket.id}/assign`, {
+      await fetch(`${API_BASE_URL}/api/worker/complaints/${assignModalTicket.id}/assign`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ worker_name: selectedAssignee }),
@@ -186,7 +187,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
 
     try {
-      await fetch('http://localhost:8000/api/worker/create', {
+      await fetch(`${API_BASE_URL}/api/worker/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entry),

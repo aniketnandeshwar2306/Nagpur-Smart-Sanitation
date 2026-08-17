@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import NagpurMap from '../../components/NagpurMap';
 import type { MapMarker } from '../../components/NagpurMap';
+import { API_BASE_URL } from '../../config/api';
 
 export type WorkerTab = 'dashboard' | 'route' | 'bins' | 'history' | 'profile';
 
@@ -119,7 +120,7 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
 
   // Fetch leaves from backend if available
   useEffect(() => {
-    fetch('http://localhost:8000/api/worker/leaves?worker_id=W-002')
+    fetch(`${API_BASE_URL}/api/worker/leaves?worker_id=W-002`)
       .then(res => res.json())
       .then(data => {
         if (data.history && data.history.length > 0) {
@@ -159,7 +160,7 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
     };
 
     try {
-      await fetch('http://localhost:8000/api/worker/leave', {
+      await fetch(`${API_BASE_URL}/api/worker/leave`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRecord),

@@ -11,8 +11,9 @@ import type {
   LeaderboardEntry,
   SegregationData,
 } from '../types/citizen.types';
+import { API_BASE_URL } from '../../../config/api';
 
-const BASE_URL = 'http://localhost:8000/api/citizen';
+const BASE_URL = `${API_BASE_URL}/api/citizen`;
 
 // ──────────────────────────────────────────────────────────────────────────────
 // MOCK DATA

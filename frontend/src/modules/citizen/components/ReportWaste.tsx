@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import type { WasteReportPayload } from '../types/citizen.types';
 import { submitReport } from '../api/citizenApi';
+import { API_BASE_URL } from '../../../config/api';
 
 type WasteType = WasteReportPayload['waste_type'];
 
@@ -134,7 +135,7 @@ const ReportWaste: React.FC = () => {
   const runAiDetector = useCallback(async (imageB64: string) => {
     setIsAiScanning(true);
     try {
-      const res = await fetch('http://localhost:8000/api/citizen/analyze-image', {
+      const res = await fetch(`${API_BASE_URL}/api/citizen/analyze-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_base64: imageB64 }),
