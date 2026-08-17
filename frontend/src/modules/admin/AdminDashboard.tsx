@@ -174,17 +174,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       .catch(() => {});
 
     // 3. Fetch workers
-    fetch(`${API_BASE_URL}/api/worker/workers`)
+    fetch(`${API_BASE_URL}/api/admin/workers`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          const localLeaves = JSON.parse(localStorage.getItem('nss_worker_leaves') || '[]');
-          const onLeaveIds = new Set(localLeaves.filter((l: any) => l.status === 'Approved' || l.status === 'Pending Approval').map((l: any) => l.worker_id));
-          const synced = data.map((w: Worker) => ({
-            ...w,
-            status: (onLeaveIds.has(w.id) || w.status === 'on_leave') ? 'on_leave' : w.status
-          }));
-          setWorkers(synced);
+        const serverWorkers = Array.isArray(data) && data.length > 0 ? data : [];
+        const localWorkers: Worker[] = JSON.parse(localStorage.getItem('nss_admin_workers') || '[]');
+        const localLeaves = JSON.parse(localStorage.getItem('nss_worker_leaves') || '[]');
+        const onLeaveIds = new Set(localLeaves.filter((l: any) => l.status === 'Approved' || l.status === 'Pending Approval').map((l: any) => l.worker_id));
+        
+        const seen = new Set<string>();
+        const combined: Worker[] = [];
+
+        for (const w of [...localWorkers, ...serverWorkers]) {
+          if (!seen.has(w.id)) {
+            seen.add(w.id);
+            combined.push({
+              ...w,
+              status: (onLeaveIds.has(w.id) || w.status === 'on_leave') ? 'on_leave' : (w.status || 'active')
+            });
+          }
+        }
+
+        if (combined.length > 0) {
+          setWorkers(combined);
         }
       })
       .catch(() => {});
@@ -280,33 +292,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     e.preventDefault();
     if (!newWorker.name || !newWorker.phone) return;
 
-    const workerId = `W-00${workers.length + 1}`;
+    const workerId = `W-${Math.floor(100 + Math.random() * 900)}`;
     const entry: Worker = {
       id: workerId,
-      name: newWorker.name,
+      name: newWorker.name.trim(),
       role: newWorker.role,
       zone: newWorker.zone,
       shift: newWorker.shift,
-      phone: newWorker.phone,
-      vehicle: newWorker.vehicle,
+      phone: newWorker.phone.trim(),
+      vehicle: newWorker.vehicle || 'NMC Tipper',
       status: 'active',
       bins: 0,
     };
 
+    // 1. Optimistic UI & local storage caching
+    setWorkers(prev => {
+      const updated = [...prev, entry];
+      try {
+        localStorage.setItem('nss_admin_workers', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    showToast(`✓ Worker ${entry.name} (${workerId}) registered in municipal roster!`);
+    setIsAddWorkerOpen(false);
+    setNewWorker({ name: '', role: 'Collector', zone: 'Zone 2 – Dharampeth', shift: '06:00 – 14:00', phone: '', vehicle: 'NMC Tipper' });
+
+    // 2. Submit to Backend API
     try {
-      await fetch(`${API_BASE_URL}/api/worker/create`, {
+      await fetch(`${API_BASE_URL}/api/admin/workers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entry),
       });
-    } catch {
-      // Local fallback
+    } catch (err) {
+      console.warn('[Admin] Offline worker registration fallback:', err);
     }
-
-    setWorkers(prev => [...prev, entry]);
-    showToast(`✓ Worker ${entry.name} (${workerId}) added successfully!`);
-    setIsAddWorkerOpen(false);
-    setNewWorker({ name: '', role: 'Collector', zone: 'Zone 2 – Dharampeth', shift: '06:00 – 14:00', phone: '', vehicle: 'NMC Tipper' });
   };
 
   const handleDownloadCsv = () => {
