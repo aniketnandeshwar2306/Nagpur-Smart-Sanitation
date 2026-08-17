@@ -66,6 +66,27 @@ const ReportWaste: React.FC = () => {
   const [description, setDescription] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Gemini AI Key Configuration
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [geminiKeyInput, setGeminiKeyInput] = useState(() => localStorage.getItem('nss_gemini_api_key') || '');
+  const [apiKeySaved, setApiKeySaved] = useState(() => Boolean(localStorage.getItem('nss_gemini_api_key')));
+
+  const handleSaveApiKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanKey = geminiKeyInput.trim();
+    if (cleanKey) {
+      localStorage.setItem('nss_gemini_api_key', cleanKey);
+      setApiKeySaved(true);
+    } else {
+      localStorage.removeItem('nss_gemini_api_key');
+      setApiKeySaved(false);
+    }
+    setIsApiKeyModalOpen(false);
+    if (capturedImage) {
+      runAiDetector(capturedImage);
+    }
+  };
+
   // Success
   const [successInfo, setSuccessInfo] = useState<SuccessInfo | null>(null);
 
@@ -349,14 +370,26 @@ const ReportWaste: React.FC = () => {
             <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">Choose how you want to provide the waste photo: Live Camera or Upload from Gallery.</p>
           </div>
 
-          {(isCameraActive || cameraError) && (
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={handleCancel}
-              className="px-4 py-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors self-start sm:self-auto"
+              type="button"
+              onClick={() => setIsApiKeyModalOpen(true)}
+              className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              ❌ Close Camera
+              <span>🤖</span>
+              <span>{apiKeySaved ? 'Gemini AI: Connected' : 'Gemini AI: Set Key'}</span>
+              <span className={`w-2 h-2 rounded-full ${apiKeySaved ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
             </button>
-          )}
+
+            {(isCameraActive || cameraError) && (
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors self-start sm:self-auto"
+              >
+                ❌ Close Camera
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Hidden File Input for Gallery */}
@@ -539,12 +572,24 @@ const ReportWaste: React.FC = () => {
           <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">Review captured image, AI classification findings, and add optional voice note.</p>
         </div>
 
-        <button
-          onClick={handleCancel}
-          className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors self-start sm:self-auto"
-        >
-          ❌ Cancel Report
-        </button>
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setIsApiKeyModalOpen(true)}
+            className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <span>🤖</span>
+            <span>{apiKeySaved ? 'Gemini AI: Connected' : 'Gemini AI: Set Key'}</span>
+            <span className={`w-2 h-2 rounded-full ${apiKeySaved ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+          </button>
+
+          <button
+            onClick={handleCancel}
+            className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
+          >
+            ❌ Cancel Report
+          </button>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
@@ -808,6 +853,70 @@ const ReportWaste: React.FC = () => {
       </div>
 
       <canvas ref={canvasRef} className="hidden" />
+
+      {/* ── MODAL: GEMINI API KEY CONFIGURATION ── */}
+      {isApiKeyModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-left">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <span>🤖</span> Google Gemini Vision AI Setup
+              </h3>
+              <button
+                onClick={() => setIsApiKeyModalOpen(false)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300">
+              To enable real-time multimodal image analysis (auto-detecting waste categories and distinguishing personal photos), provide your free Google Gemini API key:
+            </p>
+
+            <form onSubmit={handleSaveApiKey} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                  Google Gemini API Key
+                </label>
+                <input
+                  type="password"
+                  value={geminiKeyInput}
+                  onChange={(e) => setGeminiKeyInput(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-sky-500 font-mono"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Get a free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-sky-400 underline">Google AI Studio</a>. Saved locally in your browser.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                {apiKeySaved && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('nss_gemini_api_key');
+                      setGeminiKeyInput('');
+                      setApiKeySaved(false);
+                      setIsApiKeyModalOpen(false);
+                    }}
+                    className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-bold rounded-xl border border-rose-500/30 cursor-pointer"
+                  >
+                    Clear Key
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold rounded-xl shadow-md cursor-pointer"
+                >
+                  Save &amp; Connect AI
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
