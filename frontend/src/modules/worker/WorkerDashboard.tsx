@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import NagpurMap from '../../components/NagpurMap';
 import type { MapMarker } from '../../components/NagpurMap';
 import { API_BASE_URL } from '../../config/api';
+import { useAuth } from '../../context/AuthContext';
 
 export type WorkerTab = 'dashboard' | 'route' | 'bins' | 'history' | 'profile';
 
@@ -89,6 +90,7 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
   activeTab: propTab = 'dashboard',
 }) => {
   const currentTab: WorkerTab = (['dashboard', 'route', 'bins', 'history', 'profile'].includes(propTab) ? propTab : 'dashboard') as WorkerTab;
+  const { user } = useAuth();
 
   const [etaSeconds, setEtaSeconds] = useState(254);
   const [collectedBins, setCollectedBins] = useState(
@@ -101,7 +103,14 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
   const [startDate, setStartDate] = useState('2026-08-20');
   const [endDate, setEndDate] = useState('2026-08-21');
   const [reason, setReason] = useState('');
-  const [leavesList, setLeavesList] = useState<LeaveRecord[]>(INITIAL_LEAVES);
+  const [leavesList, setLeavesList] = useState<LeaveRecord[]>(() => {
+    try {
+      const cached = localStorage.getItem('nss_worker_leaves');
+      return cached ? JSON.parse(cached) : INITIAL_LEAVES;
+    } catch {
+      return INITIAL_LEAVES;
+    }
+  });
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Leave balances
@@ -118,13 +127,21 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch leaves from backend if available
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/api/worker/leaves?worker_id=W-002`)
+  // Fetch leaves from backend
+  const loadLeaves = () => {
+    const workerId = user?.id || 'W-002';
+    fetch(`${API_BASE_URL}/api/worker/leaves?worker_id=${encodeURIComponent(workerId)}`)
       .then(res => res.json())
       .then(data => {
         if (data.history && data.history.length > 0) {
-          setLeavesList(data.history);
+          setLeavesList(prev => {
+            const seen = new Set(data.history.map((h: LeaveRecord) => h.leave_id));
+            const merged = [...data.history, ...prev.filter(p => !seen.has(p.leave_id))];
+            try {
+              localStorage.setItem('nss_worker_leaves', JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
         }
         if (data.balance) {
           setBalances({
@@ -135,7 +152,11 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
         }
       })
       .catch(() => {});
-  }, []);
+  };
+
+  useEffect(() => {
+    loadLeaves();
+  }, [user?.id]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -146,15 +167,27 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
     e.preventDefault();
     if (!reason.trim()) return;
 
+    // Calculate days duration
+    let daysCount = 1;
+    try {
+      const s = new Date(startDate).getTime();
+      const end = new Date(endDate).getTime();
+      if (end >= s) {
+        daysCount = Math.round((end - s) / (1000 * 3600 * 24)) + 1;
+      }
+    } catch {
+      daysCount = 1;
+    }
+
     const newRecord: LeaveRecord = {
       leave_id: `LV-2026-${Math.floor(Math.random() * 9000 + 1000)}`,
-      worker_id: WORKER.id,
-      worker_name: WORKER.name,
+      worker_id: user?.id || 'W-002',
+      worker_name: user?.name || 'Suresh Meshram',
       leave_type: leaveType,
       start_date: startDate,
       end_date: endDate,
       reason: reason.trim(),
-      days: 1,
+      days: daysCount,
       status: 'Pending Approval',
       applied_at: new Date().toISOString(),
     };
@@ -165,12 +198,19 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRecord),
       });
-    } catch {
-      // Local fallback
+    } catch (err) {
+      console.warn('[Worker] Offline leave submit fallback:', err);
     }
 
-    setLeavesList(prev => [newRecord, ...prev]);
-    showToast(`✓ Leave application ${newRecord.leave_id} submitted to Supervisor!`);
+    setLeavesList(prev => {
+      const updated = [newRecord, ...prev];
+      try {
+        localStorage.setItem('nss_worker_leaves', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    showToast(`✓ Leave request ${newRecord.leave_id} (${daysCount} day${daysCount > 1 ? 's' : ''}) submitted to Supervisor!`);
     setIsLeaveModalOpen(false);
     setReason('');
   };
@@ -511,6 +551,61 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
                   <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">Carry forward</div>
                 </div>
               </div>
+            </div>
+
+            {/* Leave Applications History & Approvals Table */}
+            <div className="eco-card p-6 space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h4 className="text-base font-bold text-slate-900 dark:text-slate-100">Leave Applications & Approvals</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Track real-time supervisor approvals and leave statuses</p>
+                </div>
+                <button
+                  onClick={() => setIsLeaveModalOpen(true)}
+                  className="eco-button-primary text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>+</span> New Leave Application
+                </button>
+              </div>
+
+              {leavesList.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">No leave applications recorded yet.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-2.5 px-3">Application ID</th>
+                        <th className="py-2.5 px-3">Leave Type</th>
+                        <th className="py-2.5 px-3">Dates (From &rarr; To)</th>
+                        <th className="py-2.5 px-3">Days</th>
+                        <th className="py-2.5 px-3">Reason</th>
+                        <th className="py-2.5 px-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                      {leavesList.map((l) => (
+                        <tr key={l.leave_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{l.leave_id}</td>
+                          <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">{l.leave_type}</td>
+                          <td className="py-3 px-3 text-slate-600 dark:text-slate-300">{l.start_date} &rarr; {l.end_date}</td>
+                          <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-100">{l.days} Day{l.days > 1 ? 's' : ''}</td>
+                          <td className="py-3 px-3 text-slate-600 dark:text-slate-400 max-w-xs truncate">{l.reason}</td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-block border ${
+                              l.status === 'Approved'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                                : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                            }`}>
+                              {l.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

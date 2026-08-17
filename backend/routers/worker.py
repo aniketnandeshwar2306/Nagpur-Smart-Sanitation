@@ -481,12 +481,16 @@ def assign_complaint_worker(ticket_id: str, payload: dict, db=Depends(get_db)):
 
 
 @router.get("/leaves")
-def get_worker_leaves(worker_id: Optional[str] = "W-002", db=Depends(get_db)):
+def get_worker_leaves(worker_id: Optional[str] = None, db=Depends(get_db)):
     """Fetch leave records and balances for worker from MongoDB."""
     history = []
+    query = {}
+    if worker_id:
+        query["worker_id"] = worker_id
+
     if db is not None:
         try:
-            cursor = db.worker_leaves.find({"worker_id": worker_id}, {"_id": 0}).sort("applied_at", -1)
+            cursor = db.worker_leaves.find(query, {"_id": 0}).sort("applied_at", -1)
             history = list(cursor)
         except Exception as e:
             print("[Fetch Leaves Error]", e)
@@ -495,25 +499,30 @@ def get_worker_leaves(worker_id: Optional[str] = "W-002", db=Depends(get_db)):
         history = [
             {
                 "leave_id": "LV-2026-9041",
-                "worker_id": worker_id,
+                "worker_id": worker_id or "W-002",
                 "worker_name": "Suresh Meshram",
                 "leave_type": "Casual Leave",
                 "start_date": "2026-08-20",
                 "end_date": "2026-08-21",
-                "reason": "Family function in Wardha",
+                "reason": "Family ceremony in Wardha",
                 "days": 2,
                 "status": "Approved",
                 "applied_at": "2026-08-14T10:30:00Z"
             }
         ]
 
+    # Calculate remaining balances
+    used_cl = sum(l.get("days", 1) for l in history if l.get("leave_type") == "Casual Leave" and l.get("status") == "Approved")
+    used_sl = sum(l.get("days", 1) for l in history if l.get("leave_type") == "Sick Leave" and l.get("status") == "Approved")
+    used_el = sum(l.get("days", 1) for l in history if l.get("leave_type") == "Earned Leave" and l.get("status") == "Approved")
+
     return {
         "status": "success",
-        "worker_id": worker_id,
+        "worker_id": worker_id or "W-002",
         "balance": {
-            "casual_leave_remaining": 8,
-            "sick_leave_remaining": 6,
-            "earned_leave_remaining": 14
+            "casual_leave_remaining": max(0, 10 - used_cl),
+            "sick_leave_remaining": max(0, 8 - used_sl),
+            "earned_leave_remaining": max(0, 15 - used_el)
         },
         "history": history
     }
@@ -522,7 +531,7 @@ def get_worker_leaves(worker_id: Optional[str] = "W-002", db=Depends(get_db)):
 @router.post("/leave")
 def apply_worker_leave(payload: dict, db=Depends(get_db)):
     """Record a worker leave application in MongoDB."""
-    leave_id = payload.get("leave_id", f"LV-2026-{random.randint(1000, 9999)}")
+    leave_id = payload.get("leave_id") or f"LV-2026-{random.randint(1000, 9999)}"
     record = {
         "leave_id": leave_id,
         "worker_id": payload.get("worker_id", "W-002"),
@@ -530,10 +539,10 @@ def apply_worker_leave(payload: dict, db=Depends(get_db)):
         "leave_type": payload.get("leave_type", "Casual Leave"),
         "start_date": payload.get("start_date", "2026-08-20"),
         "end_date": payload.get("end_date", "2026-08-21"),
-        "reason": payload.get("reason", "Personal"),
+        "reason": payload.get("reason", "Personal necessity"),
         "days": payload.get("days", 1),
         "status": "Pending Approval",
-        "applied_at": datetime.now(timezone.utc).isoformat()
+        "applied_at": payload.get("applied_at") or datetime.now(timezone.utc).isoformat()
     }
 
     if db is not None:
@@ -542,8 +551,7 @@ def apply_worker_leave(payload: dict, db=Depends(get_db)):
         except Exception as e:
             print("[Apply Leave Error]", e)
 
-    # Clean response (remove _id if added by mongo)
     record.pop("_id", None)
-    return {"status": "success", "message": "Leave application submitted", "leave": record}
+    return {"status": "success", "message": f"Leave request {leave_id} submitted for supervisor review.", "leave": record}
 
 
