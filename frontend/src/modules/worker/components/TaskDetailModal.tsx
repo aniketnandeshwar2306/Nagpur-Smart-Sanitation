@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { DailyTask, TaskStatus } from '../types';
+import { calculateSegregationBonus } from '../api';
 
 interface TaskDetailModalProps {
   task: DailyTask;
@@ -64,6 +65,44 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
               />
             </div>
           )}
+
+          {/* AI Segregation Score & Earned Bonus if available */}
+          {task.segregation_score !== null && task.segregation_score !== undefined && (() => {
+            const earnedBonus = (task.bonus_awarded !== undefined && task.bonus_awarded !== null && task.bonus_awarded > 0)
+              ? task.bonus_awarded
+              : calculateSegregationBonus(task.segregation_score, task.verification_status);
+
+            return (
+              <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center font-bold text-xs ${
+                    task.segregation_score >= 80
+                      ? 'bg-emerald-500 text-slate-950'
+                      : task.segregation_score >= 60
+                      ? 'bg-amber-500 text-slate-950'
+                      : 'bg-rose-600 text-white'
+                  }`}>
+                    <span>{task.segregation_score}%</span>
+                    <span className="text-[8px] uppercase">Purity</span>
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-200 block text-xs">
+                      {task.verification_status || (task.segregation_score >= 75 ? 'PASSED' : 'WARNING')}
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      NMC AI Purity Verified
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Purity Bonus</span>
+                  <span className="text-sm font-black text-lime-400">
+                    {earnedBonus > 0 ? `+₹${earnedBonus}` : '₹0 (Low Score)'}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Description */}
           <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800">

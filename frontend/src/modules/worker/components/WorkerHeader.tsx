@@ -7,14 +7,29 @@ interface WorkerHeaderProps {
   onLanguageChange: (lang: 'en' | 'mr' | 'hi') => void;
   onOpenSafetyChecklist: () => void;
   isOnline: boolean;
+  onZoneChange?: (zone: string, wardId: number) => void;
 }
+
+const NAGPUR_ZONES_LIST = [
+  { ward_id: 1, name: 'Zone 1 - Laxmi Nagar', short: 'Z1 Laxmi Ngr' },
+  { ward_id: 2, name: 'Zone 2 - Dharampeth', short: 'Z2 Dharampeth' },
+  { ward_id: 3, name: 'Zone 3 - Hanuman Nagar', short: 'Z3 Hanuman Ngr' },
+  { ward_id: 4, name: 'Zone 4 - Dhantoli', short: 'Z4 Dhantoli' },
+  { ward_id: 5, name: 'Zone 5 - Nehru Nagar', short: 'Z5 Nehru Ngr' },
+  { ward_id: 6, name: 'Zone 6 - Gandhibagh', short: 'Z6 Gandhibagh' },
+  { ward_id: 7, name: 'Zone 7 - Satranjipura', short: 'Z7 Satranjipura' },
+  { ward_id: 8, name: 'Zone 8 - Lakadganj', short: 'Z8 Lakadganj' },
+  { ward_id: 9, name: 'Zone 9 - Ashi Nagar', short: 'Z9 Ashi Ngr' },
+  { ward_id: 10, name: 'Zone 10 - Mangalwari', short: 'Z10 Mangalwari' }
+];
 
 export const WorkerHeader: React.FC<WorkerHeaderProps> = ({
   stats,
   language,
   onLanguageChange,
   onOpenSafetyChecklist,
-  isOnline
+  isOnline,
+  onZoneChange
 }) => {
   const getGreeting = () => {
     if (language === 'mr') return 'शुभ प्रभात, ';
@@ -23,16 +38,24 @@ export const WorkerHeader: React.FC<WorkerHeaderProps> = ({
   };
 
   const getRoleTitle = () => {
-    if (language === 'mr') return 'स्वच्छता दूत • नागपूर महानगरपालिका';
-    if (language === 'hi') return 'स्वच्छता दूत • नागपुर नगर निगम';
-    return 'Sanitation Field Officer • NMC Nagpur';
+    if (language === 'mr') return 'स्वच्छता दूत • नागपूर मनपा';
+    if (language === 'hi') return 'स्वच्छता दूत • नागपुर निगम';
+    return 'Sanitation Officer • NMC Nagpur';
+  };
+
+  const handleZoneSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedName = e.target.value;
+    const found = NAGPUR_ZONES_LIST.find(z => z.name === selectedName);
+    if (found && onZoneChange) {
+      onZoneChange(found.name, found.ward_id);
+    }
   };
 
   return (
     <div className="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 px-4 py-3 shadow-lg">
       <div className="max-w-7xl mx-auto flex flex-col gap-3">
         {/* Top Row: Worker info & Utility controls */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           {/* Worker Avatar & Badge */}
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -56,14 +79,35 @@ export const WorkerHeader: React.FC<WorkerHeaderProps> = ({
                   {stats.worker_id}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium">
-                {getRoleTitle()} • <span className="text-amber-400">{stats.zone_assigned}</span>
+              <p className="text-xs text-slate-400 font-medium flex items-center gap-1.5 flex-wrap mt-0.5">
+                <span>{getRoleTitle()}</span>
+                <span className="text-slate-600">•</span>
+                <span className="text-amber-400 font-semibold">{stats.zone_assigned}</span>
               </p>
             </div>
           </div>
 
-          {/* Language & Safety Actions */}
-          <div className="flex items-center gap-2">
+          {/* Nagpur Ward / Zone Selector & Actions */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Zone Switcher Dropdown */}
+            {onZoneChange && (
+              <div className="flex items-center bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-200">
+                <span className="text-amber-400 text-xs mr-1">📍</span>
+                <select
+                  value={stats.zone_assigned}
+                  onChange={handleZoneSelect}
+                  className="bg-transparent text-slate-200 text-xs font-semibold focus:outline-none cursor-pointer pr-1"
+                  title="Switch Nagpur Ward / Zone"
+                >
+                  {NAGPUR_ZONES_LIST.map(z => (
+                    <option key={z.name} value={z.name} className="bg-slate-900 text-slate-200">
+                      {z.name} (Ward {z.ward_id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Language Switcher */}
             <div className="flex bg-slate-800/80 rounded-lg p-0.5 border border-slate-700 text-xs">
               <button
@@ -156,3 +200,5 @@ export const WorkerHeader: React.FC<WorkerHeaderProps> = ({
     </div>
   );
 };
+
+export default WorkerHeader;

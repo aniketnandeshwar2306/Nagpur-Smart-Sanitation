@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { DailyTask, WorkerStats, WardZoneGeo, SegregationVerificationResult, TaskStatus } from './types';
-import { workerApi } from './api';
+import { workerApi, calculateSegregationBonus } from './api';
 import { WorkerHeader } from './components/WorkerHeader';
 import { WeatherAlertBanner } from './components/WeatherAlertBanner';
 import { DailyTasksList } from './components/DailyTasksList';
@@ -128,14 +128,20 @@ export const WorkerDashboard: React.FC = () => {
   };
 
   // Handle task status update
-  const handleStatusChange = async (taskId: string, newStatus: TaskStatus, notes?: string) => {
+  const handleStatusChange = async (taskId: string, newStatus: TaskStatus, notes?: string, customBonus?: number) => {
     try {
+      const existingTask = tasks.find(t => t.id === taskId);
+      const earnedBonus = customBonus !== undefined 
+        ? customBonus 
+        : calculateSegregationBonus(existingTask?.segregation_score, existingTask?.verification_status);
+
       const updated = await workerApi.updateTaskStatus(taskId, {
         status: newStatus,
-        worker_notes: notes
+        worker_notes: notes,
+        segregation_score: existingTask?.segregation_score || undefined
       });
 
-      setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, ...updated } : t)));
+      setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, ...updated, bonus_awarded: updated.bonus_awarded || earnedBonus } : t)));
 
       // Recalculate local stats
       setStats(prev => {
@@ -145,19 +151,60 @@ export const WorkerDashboard: React.FC = () => {
           ...prev,
           completed_today: completed,
           pending_today: pending,
-          daily_incentive_earned_inr: prev.daily_incentive_earned_inr + (newStatus === 'COMPLETED' ? 25 : 0)
+          daily_incentive_earned_inr: prev.daily_incentive_earned_inr + (newStatus === 'COMPLETED' ? earnedBonus : 0)
         };
       });
 
-      showToast(
-        language === 'mr'
-          ? `तक्रार स्थिती अपडेट केली: ${newStatus}`
-          : `Task ${taskId} updated to ${newStatus}`,
-        'success'
-      );
+      if (newStatus === 'COMPLETED') {
+        showToast(
+          language === 'mr'
+            ? `काम पूर्ण झाले! +₹${earnedBonus} बक्षीस जमा.`
+            : `Task completed! +₹${earnedBonus} purity bonus awarded.`,
+          'success'
+        );
+      } else {
+        showToast(
+          language === 'mr'
+            ? `तक्रार स्थिती अपडेट केली: ${newStatus}`
+            : `Task updated to ${newStatus}`,
+          'success'
+        );
+      }
     } catch (err) {
       console.error('Failed to update task status:', err);
       showToast('Failed to update task status', 'warn');
+    }
+  };
+
+  // Handle archiving all completed tasks from shift list
+  const handleArchiveCompleted = async () => {
+    try {
+      await workerApi.archiveCompletedTasks(stats.worker_id);
+      setTasks(prev => prev.filter(t => t.status !== 'COMPLETED'));
+      showToast(
+        language === 'mr'
+          ? 'पूर्ण झालेली सर्व कामे साफ केली आहेत!'
+          : 'Completed tasks archived & cleared from active queue!',
+        'success'
+      );
+    } catch (err) {
+      console.error('Failed to archive completed tasks:', err);
+      showToast('Failed to archive completed tasks', 'warn');
+    }
+  };
+
+  // Handle deleting/dismissing a single task
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await workerApi.deleteTask(taskId);
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+      showToast(
+        language === 'mr' ? 'काम यादीतून काढले.' : 'Task removed from shift feed.',
+        'info'
+      );
+    } catch (err) {
+      console.error('Failed to delete task:', err);
+      showToast('Failed to remove task', 'warn');
     }
   };
 
@@ -168,7 +215,8 @@ export const WorkerDashboard: React.FC = () => {
       await handleStatusChange(
         taskId,
         isPassed ? 'COMPLETED' : 'IN_PROGRESS',
-        `AI Segregation: ${result.overall_score}% (${result.primary_category}). ${result.feedback_english}`
+        `AI Segregation: ${result.overall_score}% (${result.primary_category}). ${result.feedback_english}`,
+        result.incentive_earned_inr
       );
 
       setTasks(prev =>
@@ -177,7 +225,8 @@ export const WorkerDashboard: React.FC = () => {
             ? {
                 ...t,
                 segregation_score: result.overall_score,
-                verification_status: result.verdict
+                verification_status: result.verdict,
+                bonus_awarded: result.incentive_earned_inr
               }
             : t
         )
@@ -220,6 +269,33 @@ export const WorkerDashboard: React.FC = () => {
     );
   };
 
+  const handleZoneChange = async (newZone: string, newWardId: number) => {
+    setStats(prev => ({
+      ...prev,
+      zone_assigned: newZone,
+      ward_number: newWardId
+    }));
+
+    try {
+      const zoneNamePart = newZone.split(' - ')[1] || newZone;
+      const updatedTasks = await workerApi.getTasks({
+        workerId: stats.worker_id,
+        zone: zoneNamePart,
+        wardNumber: newWardId
+      });
+      setTasks(updatedTasks);
+    } catch (err) {
+      console.warn('Error fetching zone tasks:', err);
+    }
+
+    showToast(
+      language === 'mr'
+        ? `प्रभाग बदलला: ${newZone} (प्रभाग ${newWardId})`
+        : `Switched duty zone to ${newZone} (Ward ${newWardId})`,
+      'info'
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-24 font-sans selection:bg-amber-500 selection:text-slate-950">
       {/* Worker Sticky Header */}
@@ -229,7 +305,9 @@ export const WorkerDashboard: React.FC = () => {
         onLanguageChange={setLanguage}
         onOpenSafetyChecklist={() => setIsSafetyChecklistOpen(true)}
         isOnline={isOnline}
+        onZoneChange={handleZoneChange}
       />
+
 
       {/* Push-style Real-time Weather & Hazard Alert Banner */}
       <WeatherAlertBanner
@@ -308,13 +386,15 @@ export const WorkerDashboard: React.FC = () => {
             onStatusChange={handleStatusChange}
             onNavigateToMap={handleNavigateToMap}
             onOpenCreateTask={() => setIsCreateTaskOpen(true)}
+            onArchiveCompleted={handleArchiveCompleted}
+            onDeleteTask={handleDeleteTask}
           />
         )}
 
         {activeTab === 'map' && (
           <div className="space-y-3">
             <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-              <span>📍 Centered on Nagpur Dharampeth (Zone 2)</span>
+              <span>📍 Nagpur Ward Map ({stats.zone_assigned})</span>
               <span className="text-amber-400 font-semibold">• Live GPS Active</span>
             </div>
             <GISWardMap
@@ -325,9 +405,11 @@ export const WorkerDashboard: React.FC = () => {
               onVerifyTask={task => handleOpenVerifyModal(task)}
               selectedTaskId={highlightedMapTaskId}
               workerCoordinates={[workerGps.latitude, workerGps.longitude]}
+              selectedZone={stats.zone_assigned}
             />
           </div>
         )}
+
 
         {activeTab === 'stats' && (
           <div className="space-y-4">

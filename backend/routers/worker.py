@@ -12,11 +12,14 @@ Features:
 """
 
 import os
+import re
 import json
+import base64
 import sqlite3
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from contextlib import contextmanager
+from dotenv import load_dotenv
 
 from fastapi import (
     APIRouter,
@@ -36,6 +39,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BACKEND_DIR = os.path.abspath(os.path.join(BASE_DIR, ".."))
 DB_PATH = os.path.join(BACKEND_DIR, "smart_sanitation.db")
 UPLOAD_AUDITS_DIR = os.path.join(BACKEND_DIR, "uploads", "audits")
+
+# Load environment variables
+load_dotenv(os.path.join(BACKEND_DIR, ".env"))
+load_dotenv(os.path.join(BACKEND_DIR, "..", ".env"))
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_AUDITS_DIR, exist_ok=True)
@@ -201,7 +208,7 @@ def init_db():
                     "Near Futala Musical Fountain Gate 1", 2, "Zone 2 - Dharampeth",
                     "Suresh Bhole", "+91 94221 44550",
                     "WRK-4089", "2026-08-16T07:15:00Z", 25,
-                    92.0, "PASSED", 25.0,
+                    92.0, "PASSED", 40.0,
                     "https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=500&auto=format&fit=crop&q=60",
                     None, "First lot loaded into green composter bin vehicle.", None
                 ),
@@ -243,7 +250,7 @@ def init_db():
                     "Near Hedgewar Smruti Mandir Gate 3", 3, "Zone 3 - Hanuman Nagar",
                     "NMC Garden Department", "+91 712 2567001",
                     "WRK-4089", "2026-08-16T06:00:00Z", 20,
-                    98.0, "PASSED", 25.0,
+                    98.0, "PASSED", 50.0,
                     "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=500&auto=format&fit=crop&q=60",
                     "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=500&auto=format&fit=crop&q=60",
                     "Loaded 350 kg leaf litter into shredder composter vehicle.", "2026-08-16T07:10:00Z"
@@ -260,6 +267,90 @@ def init_db():
                     "WRK-4089", "2026-08-16T09:00:00Z", 15,
                     None, None, 0.0,
                     "https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=500&auto=format&fit=crop&q=60",
+                    None, None, None
+                ),
+                (
+                    "TSK-NGP-107", "NMC-2026-8807",
+                    "Nandanvan Commercial Vegetable Mandi Wet Clearance",
+                    "Accumulation of leftover vegetable produce and bio-matter behind Nandanvan Main Road.",
+                    "Wet Organic", "HIGH", "PENDING",
+                    21.1290, 79.1310,
+                    "Nandanvan Market Chowk, Lane 3",
+                    "Behind Gurudeo Nagar Garden", 5, "Zone 5 - Nehru Nagar",
+                    "Sunil Meshram", "+91 98234 56789",
+                    "WRK-4089", "2026-08-16T07:30:00Z", 30,
+                    None, None, 0.0,
+                    "https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=500&auto=format&fit=crop&q=60",
+                    None, None, None
+                ),
+                (
+                    "TSK-NGP-108", "NMC-2026-8808",
+                    "Itwari Wholesale Grain & Packing Box Clearance",
+                    "Discarded wooden crates, corrugated cartons, and plastic straps in Wholesale Grain Market lane.",
+                    "Dry Recyclable", "CRITICAL", "PENDING",
+                    21.1555, 79.1120,
+                    "Grain Market Gate 4, Itwari, Nagpur",
+                    "Near Teen Nal Chowk", 6, "Zone 6 - Gandhibagh",
+                    "Rameshwar Agrawal", "+91 94228 12345",
+                    "WRK-4089", "2026-08-16T08:15:00Z", 40,
+                    None, None, 0.0,
+                    "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500&auto=format&fit=crop&q=60",
+                    None, None, None
+                ),
+                (
+                    "TSK-NGP-109", "NMC-2026-8809",
+                    "Shanti Nagar Secondary Street Mixed Waste Spot",
+                    "Citizen report of domestic mixed garbage dumped near drainage culvert.",
+                    "Mixed Waste", "HIGH", "PENDING",
+                    21.1680, 79.1170,
+                    "Shanti Nagar Main Road, Plot 14",
+                    "Near Water Tank Circle", 7, "Zone 7 - Satranjipura",
+                    "Kavita Gaikwad", "+91 97655 43210",
+                    "WRK-4089", "2026-08-16T09:30:00Z", 25,
+                    None, None, 0.0,
+                    "https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?w=500&auto=format&fit=crop&q=60",
+                    None, None, None
+                ),
+                (
+                    "TSK-NGP-110", "NMC-2026-8810",
+                    "Pardi Industrial & Construction Debris Pile",
+                    "Concrete rubble, broken tiles, and masonry scrap dumped along ring road service lane.",
+                    "Construction Scrap", "HIGH", "PENDING",
+                    21.1490, 79.1430,
+                    "Old Bhandara Road, Near Pardi Naka",
+                    "Opposite Octroi Post", 8, "Zone 8 - Lakadganj",
+                    "Santosh Tiwari", "+91 98902 34567",
+                    "WRK-4089", "2026-08-16T10:00:00Z", 45,
+                    None, None, 0.0,
+                    "https://images.unsplash.com/photo-1590069261209-f8e9b8642343?w=500&auto=format&fit=crop&q=60",
+                    None, None, None
+                ),
+                (
+                    "TSK-NGP-111", "NMC-2026-8811",
+                    "Indora Chowk Commercial Plastic & Mixed Bin Spill",
+                    "Commercial food wrappers, single-use bags, and cups overflowing from community bins.",
+                    "Mixed Waste", "CRITICAL", "PENDING",
+                    21.1830, 79.1090,
+                    "Indora Square, North Nagpur Corridor",
+                    "Near Dr. Ambedkar College Gate", 9, "Zone 9 - Ashi Nagar",
+                    "Bhimrao Wankhede", "+91 98221 67890",
+                    "WRK-4089", "2026-08-16T10:30:00Z", 30,
+                    None, None, 0.0,
+                    "https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?w=500&auto=format&fit=crop&q=60",
+                    None, None, None
+                ),
+                (
+                    "TSK-NGP-112", "NMC-2026-8812",
+                    "Sadar Residency Road Restaurant Wet Waste Pickup",
+                    "Segregated kitchen organic waste bins from food street restaurants ready for bio-methanation processing.",
+                    "Wet Organic", "HIGH", "PENDING",
+                    21.1680, 79.0820,
+                    "Residency Road Food Street, Sadar",
+                    "Behind Mount Road Shopping Complex", 10, "Zone 10 - Mangalwari",
+                    "Firoz Khan (Hotel Association)", "+91 94220 98765",
+                    "WRK-4089", "2026-08-16T11:00:00Z", 25,
+                    None, None, 0.0,
+                    "https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=500&auto=format&fit=crop&q=60",
                     None, None, None
                 )
             ]
@@ -291,11 +382,16 @@ def init_db():
                     14.2,
                     11,
                     json.dumps([
-                        "Zone 2 - Dharampeth",
-                        "Zone 4 - Dhantoli",
-                        "Zone 6 - Gandhibagh",
                         "Zone 1 - Laxmi Nagar",
-                        "Zone 3 - Hanuman Nagar"
+                        "Zone 2 - Dharampeth",
+                        "Zone 3 - Hanuman Nagar",
+                        "Zone 4 - Dhantoli",
+                        "Zone 5 - Nehru Nagar",
+                        "Zone 6 - Gandhibagh",
+                        "Zone 7 - Satranjipura",
+                        "Zone 8 - Lakadganj",
+                        "Zone 9 - Ashi Nagar",
+                        "Zone 10 - Mangalwari"
                     ]),
                     "2026-08-16T08:00:00Z",
                     "2026-08-16T18:00:00Z",
@@ -328,6 +424,7 @@ def init_db():
                     json.dumps([
                         "Zone 4 - Dhantoli",
                         "Zone 6 - Gandhibagh",
+                        "Zone 7 - Satranjipura",
                         "Zone 10 - Mangalwari"
                     ]),
                     "2026-08-16T11:00:00Z",
@@ -353,86 +450,139 @@ def init_db():
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, seed_alerts)
 
-        # Seed wards if table is empty
+        # Seed all 10 NMC Zones in wards table if table is empty or has fewer than 10 zones
         cursor.execute("SELECT COUNT(*) FROM wards")
-        if cursor.fetchone()[0] == 0:
+        if cursor.fetchone()[0] < 10:
+            cursor.execute("DELETE FROM wards")
             seed_wards = [
                 (
                     1,
                     "Zone 1 - Laxmi Nagar",
-                    "Bajaj Nagar & Shankar Nagar",
-                    21.1315,
-                    79.0620,
-                    4,
-                    18,
+                    "Bajaj Nagar, Shankar Nagar, Khamla & Pratap Nagar",
+                    21.1250,
+                    79.0600,
+                    5,
+                    24,
                     "#06b6d4",
                     json.dumps([
-                        [21.138, 79.055], [21.138, 79.070], [21.125, 79.070], [21.125, 79.055]
+                        [21.138, 79.050], [21.138, 79.072], [21.115, 79.072], [21.115, 79.050]
                     ])
                 ),
                 (
                     2,
                     "Zone 2 - Dharampeth",
-                    "Futala, Ram Nagar & Dharampeth",
+                    "Futala, Ram Nagar, Gokulpeth, Seminary Hills & Dharampeth",
                     21.1470,
                     79.0580,
                     6,
-                    24,
+                    28,
                     "#3b82f6",
                     json.dumps([
-                        [21.158, 79.045], [21.158, 79.068], [21.140, 79.068], [21.140, 79.045]
+                        [21.158, 79.045], [21.158, 79.070], [21.138, 79.070], [21.138, 79.045]
                     ])
                 ),
                 (
                     3,
                     "Zone 3 - Hanuman Nagar",
-                    "Reshimbagh & Medical Square",
-                    21.1290,
+                    "Reshimbagh, Medical Square, Sakkardara & Ayodhya Nagar",
+                    21.1220,
                     79.1020,
                     5,
-                    20,
+                    22,
                     "#8b5cf6",
                     json.dumps([
-                        [21.136, 79.095], [21.136, 79.112], [21.120, 79.112], [21.120, 79.095]
+                        [21.135, 79.090], [21.135, 79.115], [21.112, 79.115], [21.112, 79.090]
                     ])
                 ),
                 (
                     4,
                     "Zone 4 - Dhantoli",
-                    "Congress Nagar & Sitabuldi South",
+                    "Congress Nagar, Sitabuldi, Rahate Colony & Ajni",
                     21.1390,
                     79.0830,
                     7,
-                    28,
+                    30,
                     "#ec4899",
                     json.dumps([
-                        [21.145, 79.075], [21.145, 79.092], [21.132, 79.092], [21.132, 79.075]
+                        [21.148, 79.072], [21.148, 79.095], [21.130, 79.095], [21.130, 79.072]
+                    ])
+                ),
+                (
+                    5,
+                    "Zone 5 - Nehru Nagar",
+                    "Nandanvan, Tajbagh, Hasanbagh, Kharbi & Dighori",
+                    21.1280,
+                    79.1320,
+                    6,
+                    26,
+                    "#e11d48",
+                    json.dumps([
+                        [21.138, 79.120], [21.138, 79.145], [21.118, 79.145], [21.118, 79.120]
                     ])
                 ),
                 (
                     6,
                     "Zone 6 - Gandhibagh",
-                    "Itwari & Wholesale Mandi",
+                    "Itwari, Mahal, Badkas Chowk & Hansapuri",
                     21.1550,
                     79.1100,
                     9,
-                    32,
+                    35,
                     "#f59e0b",
                     json.dumps([
-                        [21.163, 79.100], [21.163, 79.122], [21.148, 79.122], [21.148, 79.100]
+                        [21.165, 79.098], [21.165, 79.122], [21.145, 79.122], [21.145, 79.098]
+                    ])
+                ),
+                (
+                    7,
+                    "Zone 7 - Satranjipura",
+                    "Satranjipura, Shanti Nagar, Mehdi Bagh & Itwari Bazar",
+                    21.1660,
+                    79.1150,
+                    6,
+                    24,
+                    "#14b8a6",
+                    json.dumps([
+                        [21.176, 79.105], [21.176, 79.126], [21.156, 79.126], [21.156, 79.105]
+                    ])
+                ),
+                (
+                    8,
+                    "Zone 8 - Lakadganj",
+                    "Garoba Maidan, Bagadganj, Pardi & Wardhaman Nagar",
+                    21.1480,
+                    79.1400,
+                    8,
+                    32,
+                    "#84cc16",
+                    json.dumps([
+                        [21.158, 79.128], [21.158, 79.155], [21.138, 79.155], [21.138, 79.128]
+                    ])
+                ),
+                (
+                    9,
+                    "Zone 9 - Ashi Nagar",
+                    "Pachpaoli, Bezonbagh, Indora, Kamal Chowk & Teka Naka",
+                    21.1820,
+                    79.1100,
+                    7,
+                    28,
+                    "#6366f1",
+                    json.dumps([
+                        [21.195, 79.098], [21.195, 79.124], [21.170, 79.124], [21.170, 79.098]
                     ])
                 ),
                 (
                     10,
                     "Zone 10 - Mangalwari",
-                    "Sadar, Chaoni & Raj Bhavan Area",
-                    21.1650,
-                    79.0810,
-                    3,
-                    16,
+                    "Sadar, Chaoni, Raj Bhavan, Mankapur & Gittikhadan",
+                    21.1750,
+                    79.0750,
+                    4,
+                    20,
                     "#10b981",
                     json.dumps([
-                        [21.175, 79.070], [21.175, 79.092], [21.156, 79.092], [21.156, 79.070]
+                        [21.188, 79.062], [21.188, 79.090], [21.162, 79.090], [21.162, 79.062]
                     ])
                 )
             ]
@@ -604,6 +754,22 @@ class WardGeoItem(BaseModel):
     boundary_coordinates: List[List[float]]
 
 
+class AISpotDetectionResponse(BaseModel):
+    category: str = Field(..., example="Dry Recyclable")
+    priority: str = Field(..., example="HIGH")
+    suggested_title: str = Field(..., example="Commercial Dry Waste Overspill at Market Lane")
+    description: str = Field(..., example="Accumulated cardboard boxes, plastic wrap, and packaging materials.")
+    ward_number: int = Field(..., example=4)
+    zone_name: str = Field(..., example="Zone 4 - Dhantoli")
+    address: str = Field(..., example="Sitabuldi Main Market, Nagpur")
+    landmark: Optional[str] = Field(None, example="Near Variety Square")
+    detected_materials: List[str] = Field(default_factory=list)
+    suggested_action: str = Field(..., example="Schedule dry waste compactor truck pickup.")
+    confidence: float = Field(..., ge=0, le=1, example=0.95)
+    is_waste: bool = Field(True)
+
+
+
 # ---------------------------------------------------------------------------
 # Database Model Helper Converters
 # ---------------------------------------------------------------------------
@@ -678,22 +844,204 @@ def row_to_ward_geo_item(row: sqlite3.Row) -> WardGeoItem:
     )
 
 
+def calculate_segregation_bonus(score: Optional[float], verdict: Optional[str] = None) -> float:
+    """
+    Computes sanitation worker bonus incentive (INR) dynamically scaled to AI segregation score:
+    - 95% - 100% Purity (Flawless / Grade A+): ₹50.0
+    - 90% - 94.9% Purity (Excellent Grade A): ₹40.0
+    - 80% - 89.9% Purity (High / Clean): ₹30.0
+    - 70% - 79.9% Purity (Standard Acceptable): ₹20.0
+    - 60% - 69.9% Purity (Warning / Minor Contaminants): ₹10.0
+    - 50% - 59.9% Purity (Low Quality): ₹5.0
+    - < 50% or Non-Waste / Failed: ₹0.0
+    """
+    if score is None or score < 50.0 or (verdict and verdict.upper() == "FAILED"):
+        return 0.0
+    elif score >= 95.0:
+        return 50.0
+    elif score >= 90.0:
+        return 40.0
+    elif score >= 80.0:
+        return 30.0
+    elif score >= 70.0:
+        return 20.0
+    elif score >= 60.0:
+        return 10.0
+    else:
+        return 5.0
+
+
 # ---------------------------------------------------------------------------
-# AI Segregation Inference Hook
+# AI Segregation Inference Hook (Powered by Google Gemini 3.6 Flash Vision)
 # ---------------------------------------------------------------------------
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+class BreakdownSchema(BaseModel):
+    wet_organic_pct: float = Field(description="Percentage of wet/organic compostable waste")
+    dry_recyclable_pct: float = Field(description="Percentage of dry recyclable waste (paper, plastic, metal, glass)")
+    sanitary_hazardous_pct: float = Field(description="Percentage of sanitary or hazardous biomedical waste")
+    unsegregated_contaminant_pct: float = Field(description="Percentage of mixed unsegregated contaminants")
+
+class WasteAnalysisSchema(BaseModel):
+    is_waste: bool = Field(description="True if image contains municipal solid waste, false if human face, selfie, person, animal, room interior, vehicle, or non-waste item")
+    overall_score: float = Field(description="Overall segregation purity percentage score from 0.0 to 100.0")
+    verdict: str = Field(description="PASSED if score >= 75.0, WARNING if 50.0 <= score < 75.0, FAILED if score < 50.0")
+    primary_category: str = Field(description="Primary identified category (e.g. Biodegradable Wet / Organic Waste, Dry Recyclable, Sanitary & Hazardous, Mixed Contaminated Waste, Non-Waste Image)")
+    ai_confidence: float = Field(description="Confidence score between 0.85 and 0.99")
+    breakdown: BreakdownSchema
+    detected_items: List[str] = Field(description="Specific materials or objects detected in the photo")
+    contaminants_found: List[str] = Field(description="Specific foreign contaminants identified")
+    feedback_english: str = Field(description="Actionable English instruction for sanitation worker / citizen")
+    feedback_marathi: str = Field(description="Regional Marathi translation with proper NMC terminology")
+    safety_advisory: str = Field(description="Safety & PPE advisory instructions")
+    incentive_earned_inr: float = Field(description="Incentive earned in INR (25.0 for PASSED, 10.0 for WARNING, 0.0 for FAILED)")
+
+class SpotAnalysisSchema(BaseModel):
+    is_waste: bool = Field(description="True if image contains real garbage accumulation/litter/debris, false if non-waste")
+    category: str = Field(description="Exactly ONE of: Wet Organic, Dry Recyclable, Mixed Waste, Sanitary / Hazardous, E-Waste, Construction Scrap")
+    priority: str = Field(description="Exactly ONE of: CRITICAL, HIGH, MEDIUM, LOW")
+    suggested_title: str = Field(description="Realistic, descriptive headline describing what waste is visible and location context")
+    description: str = Field(description="Detailed 1-2 sentence description of visible waste volume, composition, and condition")
+    detected_materials: List[str] = Field(description="List of 3-6 specific materials detected in the photo")
+    suggested_action: str = Field(description="Specific recommended action for Nagpur Municipal Corporation sanitation crew")
+    confidence: float = Field(description="Confidence score between 0.85 and 0.99")
+
+def safe_extract_json(raw_text: str) -> Dict[str, Any]:
+    text = (raw_text or "").strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    try:
+        return json.loads(text)
+    except Exception:
+        match = re.search(r"(\{.*\})", text, re.DOTALL)
+        if match:
+            return json.loads(match.group(1))
+        raise
+
 def analyze_waste_image(file_path: str, category_hint: Optional[str] = None) -> Dict[str, Any]:
     """
-    Analyzes an uploaded waste image file to determine segregation purity.
-
-    TODO: AI Engineer to integrate YOLOv8 ONNX inference here.
-    Example:
-        session = ort.InferenceSession("models/yolov8_waste_segregation.onnx")
-        outputs = session.run(None, {"images": preprocessed_tensor})
+    Analyzes an uploaded waste image file using Google Gemini 3.6 Flash Vision.
+    Accurately detects whether image contains real municipal waste/garbage or is a non-waste
+    photo (such as human face, portrait, selfie, indoor room, object, etc.).
+    Extracts purity scores, composition breakdown, identified materials, contaminants,
+    bilingual Marathi/English feedback, and Swachh Bharat safety advisory.
     """
-    # Deterministic inference based on category hint and file characteristics for realistic field audits
+    # 1. Attempt Real Google Gemini 3.6 Flash Vision Evaluation
+    if GEMINI_API_KEY and os.path.exists(file_path) and os.path.getsize(file_path) > 100:
+        try:
+            from google import genai
+
+            client = genai.Client(api_key=GEMINI_API_KEY)
+
+            with open(file_path, "rb") as f:
+                img_bytes = f.read()
+                b64_data = base64.b64encode(img_bytes).decode("utf-8")
+
+            hint_text = f"Field officer / task category context: {category_hint}" if category_hint else "No category hint provided"
+
+            prompt = f"""
+You are an expert AI sanitation and waste segregation auditor for Nagpur Municipal Corporation (NMC), Maharashtra, India.
+Context: {hint_text}.
+
+Examine the uploaded image with high precision:
+Step 1: Determine whether this image contains actual municipal solid waste / garbage / recyclable materials, OR if it is a non-waste image (such as a human face, portrait, selfie, person, animal, vehicle, indoor room, computer screen, landscape, furniture, clothing, document, etc.).
+
+Step 2:
+A) IF NOT WASTE (e.g. human face, selfie, person, indoor furniture, random non-waste object):
+- is_waste: false
+- overall_score: 0.0
+- verdict: "FAILED"
+- primary_category: "Non-Waste (Human Face / Object Detected)"
+- breakdown: wet_organic_pct: 0.0, dry_recyclable_pct: 0.0, sanitary_hazardous_pct: 0.0, unsegregated_contaminant_pct: 0.0
+- detected_items: [List what is actually visible in the photo]
+- contaminants_found: ["No garbage or municipal waste present in photo"]
+- feedback_english: "No municipal waste detected in this image. Please take a photo of an actual waste bin or collection bag."
+- feedback_marathi: "या छायाचित्रात कोणताही कचरा आढळला नाही. कृपया कचरा कुंडी किंवा कचरा पिशवीचा फोटो काढा."
+- safety_advisory: "Align the camera viewfinder directly over the waste collection bin."
+- incentive_earned_inr: 0.0
+- ai_confidence: 0.98
+
+B) IF ACTUAL WASTE / GARBAGE:
+- is_waste: true
+- overall_score: Segregation purity percentage (0.0 to 100.0) based on how properly segregated it is.
+- verdict: "PASSED" if score >= 75.0, "WARNING" if 50.0 <= score < 75.0, "FAILED" if score < 50.0
+- primary_category: e.g. "Biodegradable Wet / Organic Waste", "Dry Recyclable (Paper/Plastic/Metal)", "Sanitary / Medical Hazard", "Mixed Contaminated Waste"
+- breakdown: wet_organic_pct, dry_recyclable_pct, sanitary_hazardous_pct, unsegregated_contaminant_pct (must sum to 100.0)
+- detected_items: 3-6 specific materials visible (e.g. ["Banana peels", "Tomato scraps", "Egg shells"] or ["PET bottles", "Cardboard packaging"])
+- contaminants_found: specific foreign or improper items mixed in (e.g. ["Plastic milk pouch fragment", "Thermocol piece"])
+- feedback_english: Actionable English instruction for sanitation worker / citizen
+- feedback_marathi: Regional Marathi translation with proper NMC terminology
+- safety_advisory: PPE & safety instructions (rubber gloves, boots, mask, tongs)
+- incentive_earned_inr: 25.0 if PASSED, 10.0 if WARNING, 0.0 if FAILED
+- ai_confidence: float between 0.85 and 0.99
+"""
+
+            interaction = client.interactions.create(
+                model="gemini-3.6-flash",
+                input=[
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image",
+                        "data": b64_data,
+                        "mime_type": "image/jpeg"
+                    }
+                ],
+                response_format={
+                    "type": "text",
+                    "mime_type": "application/json",
+                    "schema": WasteAnalysisSchema.model_json_schema()
+                }
+            )
+
+            data = safe_extract_json(interaction.output_text)
+
+            bd = data.get("breakdown", {})
+            wet = float(bd.get("wet_organic_pct", 0.0))
+            dry = float(bd.get("dry_recyclable_pct", 0.0))
+            sanitary = float(bd.get("sanitary_hazardous_pct", 0.0))
+            unseg = float(bd.get("unsegregated_contaminant_pct", 0.0))
+            verdict = str(data.get("verdict", "PASSED")).upper()
+            if "PASS" in verdict:
+                verdict = "PASSED"
+            elif "WARN" in verdict:
+                verdict = "WARNING"
+            else:
+                verdict = "FAILED"
+
+            score = float(data.get("overall_score", 0.0))
+            incentive = float(data.get("incentive_earned_inr") or calculate_segregation_bonus(score, verdict))
+
+            return {
+                "overall_score": score,
+                "verdict": verdict,
+                "primary_category": str(data.get("primary_category", "Segregated Waste")),
+                "wet_organic_pct": wet,
+                "dry_recyclable_pct": dry,
+                "sanitary_hazardous_pct": sanitary,
+                "unsegregated_contaminant_pct": unseg,
+                "wet_pct": wet,
+                "dry_pct": dry,
+                "sanitary_pct": sanitary,
+                "contaminant_pct": unseg,
+                "detected_items": data.get("detected_items", ["Identified Item"]),
+                "contaminants_found": data.get("contaminants_found", []),
+                "ai_confidence": float(data.get("ai_confidence", 0.95)),
+                "feedback_marathi": str(data.get("feedback_marathi", "वर्गीकरण तपासणी पूर्ण झाली.")),
+                "feedback_english": str(data.get("feedback_english", "Segregation evaluation complete.")),
+                "safety_advisory": str(data.get("safety_advisory", "Follow standard Swachh Bharat safety protocols.")),
+                "incentive_earned_inr": incentive
+            }
+        except Exception as e:
+            try:
+                print(f"[Worker AI] Gemini Vision evaluation error: {e}")
+            except Exception:
+                pass
+
+    # 2. Local Fallback Heuristics
     hint = str(category_hint or "").upper()
 
-    if "WET" in hint:
+    if "WET" in hint or "ORGANIC" in hint:
         wet = 87.5
         dry = 8.5
         sanitary = 2.0
@@ -703,7 +1051,7 @@ def analyze_waste_image(file_path: str, category_hint: Optional[str] = None) -> 
         detected = ["Vegetable peels", "Fruit rinds", "Cooked food residue", "Tea powder leaves", "Garden foliage"]
         contaminants = ["1x Single-use plastic pouch"]
         verdict = "PASSED"
-    elif "DRY" in hint:
+    elif "DRY" in hint or "RECYCL" in hint:
         dry = 86.0
         wet = 9.0
         sanitary = 3.0
@@ -724,23 +1072,22 @@ def analyze_waste_image(file_path: str, category_hint: Optional[str] = None) -> 
         contaminants = ["Unseparated single-use polythene", "Organic food sludge"]
         verdict = "FAILED"
     else:
-        # Default balanced audit
-        wet = 82.5
-        dry = 12.0
-        sanitary = 3.5
-        unseg = 2.0
-        score = 88.5
-        primary = "Well-Segregated Biodegradable Organic"
-        detected = ["Kitchen vegetable scraps", "Banana peels", "Leftover rice", "Eggshells"]
-        contaminants = ["Small plastic carry bag fragment"]
-        verdict = "PASSED"
+        wet = 25.0
+        dry = 35.0
+        sanitary = 10.0
+        unseg = 30.0
+        score = 60.0
+        primary = "Mixed Solid Waste"
+        detected = ["Mixed municipal solid waste", "Packaging fragments", "Organic matter"]
+        contaminants = ["Unsegregated dry and wet waste"]
+        verdict = "WARNING"
 
     feedback_mr = (
         "उत्कृष्ट वर्गीकरण! ओला आणि सुका कचरा योग्यरित्या वेगळा केला गेला आहे."
         if verdict == "PASSED" else
         "सावधानता: ओल्या कचऱ्यात प्लास्टिक किंवा थर्माकोल आढळले आहे. कृपया पुन्हा वेगळे करा."
         if verdict == "WARNING" else
-        "अयोग्य वर्गीकरण! कचरा पूर्णपणे मिश्रित आहे. दंड लागू होऊ शकतो."
+        "अयोग्य वर्गीकरण! कचरा पूर्णपणे मिश्रित आहे किंवा प्रतिमा कचऱ्याची नाही."
     )
 
     feedback_en = (
@@ -748,7 +1095,7 @@ def analyze_waste_image(file_path: str, category_hint: Optional[str] = None) -> 
         if verdict == "PASSED" else
         "Notice: Minor plastic or dry contaminants found in the organic bin. Resegregation advised."
         if verdict == "WARNING" else
-        "Failed Segregation: Highly unsegregated waste mix. Flagged for citizen education warning."
+        "Failed Segregation: Highly unsegregated waste mix or non-waste photo detected."
     )
 
     safety = (
@@ -771,16 +1118,285 @@ def analyze_waste_image(file_path: str, category_hint: Optional[str] = None) -> 
         "contaminant_pct": unseg,
         "detected_items": detected,
         "contaminants_found": contaminants,
-        "ai_confidence": 0.96,
+        "ai_confidence": 0.90,
         "feedback_marathi": feedback_mr,
         "feedback_english": feedback_en,
-        "safety_advisory": safety
+        "safety_advisory": safety,
+        "incentive_earned_inr": calculate_segregation_bonus(score, verdict)
+    }
+
+
+# ---------------------------------------------------------------------------
+# Nagpur City Zones Config & Nearest Zone Solver
+# ---------------------------------------------------------------------------
+NAGPUR_ZONES_CONFIG = [
+    {
+        "ward_id": 1,
+        "zone_name": "Zone 1 - Laxmi Nagar",
+        "ward_name": "Bajaj Nagar, Shankar Nagar, Khamla & Pratap Nagar",
+        "lat": 21.1250,
+        "lng": 79.0600,
+        "default_address": "Shankar Nagar Square, Laxmi Nagar Zone, Nagpur",
+        "landmark": "Near Canara Bank / Civic Center"
+    },
+    {
+        "ward_id": 2,
+        "zone_name": "Zone 2 - Dharampeth",
+        "ward_name": "Futala, Ram Nagar, Gokulpeth, Seminary Hills & Dharampeth",
+        "lat": 21.1470,
+        "lng": 79.0580,
+        "default_address": "West High Court Road, Dharampeth, Nagpur",
+        "landmark": "Near Coffee House Square / Gokulpeth Market"
+    },
+    {
+        "ward_id": 3,
+        "zone_name": "Zone 3 - Hanuman Nagar",
+        "ward_name": "Reshimbagh, Medical Square, Sakkardara & Ayodhya Nagar",
+        "lat": 21.1220,
+        "lng": 79.1020,
+        "default_address": "Medical Square / Reshimbagh Road, Nagpur",
+        "landmark": "Opposite Ayush Diagnostics / GMC Hostel"
+    },
+    {
+        "ward_id": 4,
+        "zone_name": "Zone 4 - Dhantoli",
+        "ward_name": "Congress Nagar, Sitabuldi, Rahate Colony & Ajni",
+        "lat": 21.1390,
+        "lng": 79.0830,
+        "default_address": "Sitabuldi Main Market / Congress Nagar, Nagpur",
+        "landmark": "Near Variety Square Metro Station"
+    },
+    {
+        "ward_id": 5,
+        "zone_name": "Zone 5 - Nehru Nagar",
+        "ward_name": "Nandanvan, Tajbagh, Hasanbagh, Kharbi & Dighori",
+        "lat": 21.1280,
+        "lng": 79.1320,
+        "default_address": "Nandanvan Main Road / Tajbagh Ward, Nagpur",
+        "landmark": "Behind Gurudeo Nagar Garden"
+    },
+    {
+        "ward_id": 6,
+        "zone_name": "Zone 6 - Gandhibagh",
+        "ward_name": "Itwari, Mahal, Badkas Chowk & Hansapuri",
+        "lat": 21.1550,
+        "lng": 79.1100,
+        "default_address": "Itwari Wholesale Market / Mahal Chowk, Nagpur",
+        "landmark": "Near Teen Nal Chowk / Badkas Chowk"
+    },
+    {
+        "ward_id": 7,
+        "zone_name": "Zone 7 - Satranjipura",
+        "ward_name": "Satranjipura, Shanti Nagar, Mehdi Bagh & Itwari Bazar",
+        "lat": 21.1660,
+        "lng": 79.1150,
+        "default_address": "Shanti Nagar / Satranjipura Corridor, Nagpur",
+        "landmark": "Near Water Tank Circle / Mehdi Bagh"
+    },
+    {
+        "ward_id": 8,
+        "zone_name": "Zone 8 - Lakadganj",
+        "ward_name": "Garoba Maidan, Bagadganj, Pardi & Wardhaman Nagar",
+        "lat": 21.1480,
+        "lng": 79.1400,
+        "default_address": "Old Bhandara Road, Lakadganj / Pardi, Nagpur",
+        "landmark": "Near Garoba Maidan / Pardi Octroi Post"
+    },
+    {
+        "ward_id": 9,
+        "zone_name": "Zone 9 - Ashi Nagar",
+        "ward_name": "Pachpaoli, Bezonbagh, Indora, Kamal Chowk & Teka Naka",
+        "lat": 21.1820,
+        "lng": 79.1100,
+        "default_address": "Indora Square / Pachpaoli Main Road, Nagpur",
+        "landmark": "Near Dr. Ambedkar College / Kamal Chowk"
+    },
+    {
+        "ward_id": 10,
+        "zone_name": "Zone 10 - Mangalwari",
+        "ward_name": "Sadar, Chaoni, Raj Bhavan, Mankapur & Gittikhadan",
+        "lat": 21.1750,
+        "lng": 79.0750,
+        "default_address": "Residency Road / Sadar Bazaar, Nagpur",
+        "landmark": "Near Mount Road / Raj Bhavan Corner"
+    }
+]
+
+
+def find_nearest_nagpur_zone(lat: Optional[float] = None, lon: Optional[float] = None) -> Dict[str, Any]:
+    """Resolves the nearest Nagpur administrative zone and ward from GPS coordinates."""
+    if lat is None or lon is None or lat == 0.0 or lon == 0.0:
+        return NAGPUR_ZONES_CONFIG[1] # Zone 2 Dharampeth default
+
+    best_zone = NAGPUR_ZONES_CONFIG[1]
+    min_dist = float("inf")
+    for z in NAGPUR_ZONES_CONFIG:
+        dist = ((z["lat"] - lat) ** 2 + (z["lng"] - lon) ** 2) ** 0.5
+        if dist < min_dist:
+            min_dist = dist
+            best_zone = z
+    return best_zone
+
+
+def analyze_spot_image(file_path: str, lat: Optional[float] = None, lon: Optional[float] = None) -> Dict[str, Any]:
+    """
+    Analyzes a newly snapped waste spot photo using Google Gemini 3.6 Flash Vision.
+    Automatically classifies:
+    - Waste category (Wet Organic, Dry Recyclable, Mixed Waste, Sanitary / Hazardous, E-Waste, Construction Scrap)
+    - Priority level (CRITICAL, HIGH, MEDIUM, LOW)
+    - Auto-generated Task Title
+    - Detailed visual description
+    - Inferred Nagpur Ward & Zone via GPS proximity solver
+    - Street Address & Landmark
+    """
+    zone_info = find_nearest_nagpur_zone(lat, lon)
+    inferred_ward = zone_info["ward_id"]
+    inferred_zone = zone_info["zone_name"]
+    inferred_addr = zone_info["default_address"]
+    inferred_landmark = zone_info["landmark"]
+
+    # 1. Attempt Google Gemini 3.6 Flash Vision
+    if GEMINI_API_KEY and os.path.exists(file_path) and os.path.getsize(file_path) > 100:
+        try:
+            from google import genai
+
+            client = genai.Client(api_key=GEMINI_API_KEY)
+
+            with open(file_path, "rb") as f:
+                img_bytes = f.read()
+                b64_data = base64.b64encode(img_bytes).decode("utf-8")
+
+            prompt = f"""
+You are an expert AI municipal solid waste investigator for Nagpur Municipal Corporation (NMC), Maharashtra, India.
+Location Context: {inferred_zone} ({zone_info['ward_name']}), Nagpur (GPS: {lat or 21.1470}, {lon or 79.0580}).
+
+Analyze this field photo of a newly reported garbage spot / accumulation:
+1. is_waste: boolean (true if image contains real municipal solid waste, debris, trash heap, litter, commercial scrap, food waste, or overflowing bin; false if human face, selfie, person portrait, room interior, vehicle, document, or non-waste item)
+2. category: Must be EXACTLY ONE of: "Wet Organic", "Dry Recyclable", "Mixed Waste", "Sanitary / Hazardous", "E-Waste", "Construction Scrap"
+3. priority: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"
+   - CRITICAL: Biohazard/medical, severe sewer/road obstruction, sharp glass/chemical hazard.
+   - HIGH: Large overflowing commercial pile, wet food waste rotting in sun, high foot-traffic obstruction.
+   - MEDIUM: Moderate accumulation of cartons, plastic packaging, or residential bins.
+   - LOW: Minor garden leaves, small paper/plastic litter.
+4. suggested_title: A concise, highly realistic headline in English (e.g. "Commercial Cardboard & Plastic Overspill near Market", "Kitchen Bio-Waste Heap blocking Pedestrian Path", "Mixed Solid Waste Dump near Culvert", "Construction Debris & Rubble Accumulation").
+5. description: 1-2 concise sentences summarizing the visible materials, estimated volume/severity, and cleaning advice.
+6. detected_materials: Array of 3-5 specific detected material items (e.g. ["Corrugated cartons", "PET bottles", "Plastic carry bags"]).
+7. suggested_action: Specific recommended action for NMC sanitation workers (e.g. "Deploy green compactor truck with bio-enzymatic spray", "Schedule dry waste baler truck pickup", "Use PPE safety gloves and tongs for hazardous pickup").
+8. confidence: float between 0.85 and 0.99
+"""
+            interaction = client.interactions.create(
+                model="gemini-3.6-flash",
+                input=[
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image",
+                        "data": b64_data,
+                        "mime_type": "image/jpeg"
+                    }
+                ],
+                response_format={
+                    "type": "text",
+                    "mime_type": "application/json",
+                    "schema": SpotAnalysisSchema.model_json_schema()
+                }
+            )
+
+            data = safe_extract_json(interaction.output_text)
+
+            cat = str(data.get("category", "Mixed Waste"))
+            valid_cats = ["Wet Organic", "Dry Recyclable", "Mixed Waste", "Sanitary / Hazardous", "E-Waste", "Construction Scrap"]
+            if cat not in valid_cats:
+                cat = "Mixed Waste"
+
+            prio = str(data.get("priority", "HIGH")).upper()
+            if prio not in ["CRITICAL", "HIGH", "MEDIUM", "LOW"]:
+                prio = "HIGH"
+
+            is_waste = bool(data.get("is_waste", True))
+
+            return {
+                "category": cat,
+                "priority": prio,
+                "suggested_title": str(data.get("suggested_title", f"{cat} Waste Spot at {inferred_zone.split(' - ')[1]}")),
+                "description": str(data.get("description", "AI verified waste accumulation requiring standard NMC sanitation clearance.")),
+                "ward_number": inferred_ward,
+                "zone_name": inferred_zone,
+                "address": inferred_addr,
+                "landmark": inferred_landmark,
+                "detected_materials": data.get("detected_materials", ["Municipal solid waste"]),
+                "suggested_action": str(data.get("suggested_action", "Dispatch route compactor vehicle for immediate clearance.")),
+                "confidence": float(data.get("confidence", 0.94)),
+                "is_waste": is_waste
+            }
+        except Exception as e:
+            try:
+                print(f"[Worker AI Spot] Gemini Vision spot analysis error: {e}")
+            except Exception:
+                pass
+
+    # 2. Intelligent Offline Fallback
+    return {
+        "category": "Mixed Waste",
+        "priority": "HIGH",
+        "suggested_title": f"Reported Waste Spot at {zone_info['ward_name'].split(',')[0]}",
+        "description": "General accumulation of municipal solid waste observed along the sector corridor requiring sanitation sweep.",
+        "ward_number": inferred_ward,
+        "zone_name": inferred_zone,
+        "address": inferred_addr,
+        "landmark": inferred_landmark,
+        "detected_materials": ["Mixed packaging scraps", "Municipal solid waste"],
+        "suggested_action": "Schedule standard compactor route pickup.",
+        "confidence": 0.88,
+        "is_waste": True
     }
 
 
 # ---------------------------------------------------------------------------
 # API Routes (Database Driven)
 # ---------------------------------------------------------------------------
+
+@router.post(
+    "/ai-analyze-spot",
+    response_model=AISpotDetectionResponse,
+    summary="AI Auto-Detection for Waste Spot Logging with Live Photo",
+    description="Analyzes an uploaded or camera-captured waste spot image with Gemini 3.6 Flash Vision and GPS coordinates, auto-detecting Category, Priority, Ward/Zone, Title, and Description."
+)
+async def ai_analyze_waste_spot(
+    latitude: Optional[float] = Form(None, description="Current GPS latitude"),
+    longitude: Optional[float] = Form(None, description="Current GPS longitude"),
+    image: UploadFile = File(..., description="Captured waste spot image")
+):
+    contents = await image.read()
+    if len(contents) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Empty image received. Please take or select a clear photo."
+        )
+
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"spot_ai_{timestamp_str}.jpg"
+    saved_file_path = os.path.join(UPLOAD_AUDITS_DIR, filename)
+
+    with open(saved_file_path, "wb") as f:
+        f.write(contents)
+
+    analysis = analyze_spot_image(saved_file_path, latitude, longitude)
+
+    return AISpotDetectionResponse(
+        category=analysis["category"],
+        priority=analysis["priority"],
+        suggested_title=analysis["suggested_title"],
+        description=analysis["description"],
+        ward_number=analysis["ward_number"],
+        zone_name=analysis["zone_name"],
+        address=analysis["address"],
+        landmark=analysis.get("landmark"),
+        detected_materials=analysis.get("detected_materials", []),
+        suggested_action=analysis["suggested_action"],
+        confidence=analysis["confidence"],
+        is_waste=analysis.get("is_waste", True)
+    )
+
 
 @router.post(
     "/tasks",
@@ -790,6 +1406,7 @@ def analyze_waste_image(file_path: str, category_hint: Optional[str] = None) -> 
     description="Inserts a new sanitation work order/complaint into SQLite database and assigns to a worker."
 )
 def create_task(payload: CreateTaskRequest):
+
     new_id = f"TSK-NGP-{int(datetime.now().timestamp() * 1000) % 1000000:06d}"
     ticket_no = f"NMC-2026-{int(datetime.now().timestamp() * 100) % 10000:04d}"
     assigned_at = datetime.now(timezone.utc).isoformat()
@@ -903,13 +1520,14 @@ async def report_waste_task(
     "/tasks",
     response_model=List[TaskItem],
     summary="Get Assigned Daily Tasks & Complaints",
-    description="Executes a SELECT query on SQLite tasks table with worker_id, status, priority, and zone filters."
+    description="Executes a SELECT query on SQLite tasks table with worker_id, status, priority, ward, and zone filters."
 )
 def get_worker_tasks(
     worker_id: Optional[str] = "WRK-4089",
     status: Optional[str] = None,
     priority: Optional[str] = None,
-    zone: Optional[str] = None
+    zone: Optional[str] = None,
+    ward_number: Optional[int] = None
 ):
     query = "SELECT * FROM tasks WHERE 1=1"
     params: List[Any] = []
@@ -918,20 +1536,27 @@ def get_worker_tasks(
         query += " AND assigned_worker_id = ?"
         params.append(worker_id)
     if status and isinstance(status, str):
-        query += " AND UPPER(status) = ?"
-        params.append(status.upper())
+        if status.upper() == "ACTIVE":
+            query += " AND UPPER(status) IN ('PENDING', 'IN_PROGRESS')"
+        else:
+            query += " AND UPPER(status) = ?"
+            params.append(status.upper())
     if priority and isinstance(priority, str):
         query += " AND UPPER(priority) = ?"
         params.append(priority.upper())
     if zone and isinstance(zone, str):
         query += " AND LOWER(zone_name) LIKE ?"
         params.append(f"%{zone.lower()}%")
+    if ward_number is not None and ward_number > 0:
+        query += " AND ward_number = ?"
+        params.append(ward_number)
 
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute(query, params)
         rows = cursor.fetchall()
         tasks = [row_to_task_item(r) for r in rows]
+
 
     # Sort: IN_PROGRESS -> PENDING -> FLAGGED -> COMPLETED, and CRITICAL -> HIGH -> MEDIUM -> LOW
     priority_weights = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
@@ -945,6 +1570,49 @@ def get_worker_tasks(
     )
 
     return tasks
+
+
+@router.post(
+    "/tasks/archive-completed",
+    summary="Archive or Clear Completed Tasks",
+    description="Archives/clears completed tasks for a worker from SQLite database to prevent infinite accumulation."
+)
+def archive_completed_tasks(worker_id: Optional[str] = "WRK-4089"):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id FROM tasks WHERE UPPER(status) = 'COMPLETED' AND assigned_worker_id = ?",
+            (worker_id,)
+        )
+        rows = cursor.fetchall()
+        cleared_count = len(rows)
+        cursor.execute(
+            "DELETE FROM tasks WHERE UPPER(status) = 'COMPLETED' AND assigned_worker_id = ?",
+            (worker_id,)
+        )
+        return {
+            "success": True,
+            "cleared_count": cleared_count,
+            "message": f"Successfully cleared {cleared_count} completed tasks from active shift."
+        }
+
+
+@router.delete(
+    "/tasks/{task_id}",
+    summary="Delete or Dismiss Single Task",
+    description="Deletes a specific task by ID from SQLite database."
+)
+def delete_task_by_id(task_id: str):
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM tasks WHERE id = ?", (task_id,))
+        if not cursor.fetchone():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Task with ID '{task_id}' not found."
+            )
+        cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        return {"success": True, "deleted_id": task_id}
 
 
 @router.get(
@@ -1002,7 +1670,7 @@ def update_task_status(
             ("PASSED" if seg_score >= 75 else "WARNING" if seg_score >= 55 else "FAILED")
             if seg_score is not None else row["verification_status"]
         )
-        bonus = 25.0 if verdict == "PASSED" else 10.0 if verdict == "WARNING" else 0.0
+        bonus = calculate_segregation_bonus(seg_score, verdict)
 
         cursor.execute("""
             UPDATE tasks
@@ -1065,7 +1733,7 @@ async def verify_waste_segregation(
     ai_result = analyze_waste_image(saved_file_path, waste_category_hint)
     score = ai_result["overall_score"]
     verdict = ai_result["verdict"]
-    incentive = 25.0 if verdict == "PASSED" else 10.0 if verdict == "WARNING" else 0.0
+    incentive = calculate_segregation_bonus(score, verdict)
 
     # 4. Update task & shift in SQLite database
     if task_id:

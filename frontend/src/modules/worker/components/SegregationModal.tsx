@@ -9,48 +9,14 @@ interface SegregationModalProps {
   onVerificationComplete: (taskId: string, result: SegregationVerificationResult) => void;
 }
 
-const PRESET_SAMPLES = [
-  {
-    name: 'Futala Organic Wet Waste',
-    name_mr: 'ओला सेंद्रिय कचरा (भाजीपाला व फळे)',
-    hint: 'WET',
-    imageUrl: 'https://images.unsplash.com/photo-1605600659908-0ef719419d41?w=600&auto=format&fit=crop&q=80',
-    desc: 'Clean kitchen vegetable scraps, tea leaves, compostable matter'
-  },
-  {
-    name: 'Sitabuldi Dry Recyclables',
-    name_mr: 'सुका पुनर्वापरयोग्य कचरा (कागद/प्लास्टिक)',
-    hint: 'DRY',
-    imageUrl: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=600&auto=format&fit=crop&q=80',
-    desc: 'Cardboard boxes, PET bottles, clean packaging'
-  },
-  {
-    name: 'Mixed Contaminated Bin',
-    name_mr: 'मिश्रित / अयोग्य वर्गीकृत कचरा',
-    hint: 'MIXED',
-    imageUrl: 'https://images.unsplash.com/photo-1595278069441-2cf29f8005a4?w=600&auto=format&fit=crop&q=80',
-    desc: 'Plastic carry bags mixed with wet food & thermocol'
-  },
-  {
-    name: 'Medical / Hazardous Lane',
-    name_mr: 'धोकादायक / वैद्यकीय कचरा',
-    hint: 'HAZARDOUS',
-    imageUrl: 'https://images.unsplash.com/photo-1584744982491-665216d95f8b?w=600&auto=format&fit=crop&q=80',
-    desc: 'Clinical disposables, yellow bag items, chemical containers'
-  }
-];
-
 export const SegregationModal: React.FC<SegregationModalProps> = ({
   task,
   language,
   onClose,
   onVerificationComplete
 }) => {
-  const [selectedImage, setSelectedImage] = useState<string | null>(
-    task?.image_url || PRESET_SAMPLES[0].imageUrl
-  );
+  const [selectedImage, setSelectedImage] = useState<string | null>(task?.image_url || null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedHint, setSelectedHint] = useState<string>('WET');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [result, setResult] = useState<SegregationVerificationResult | null>(null);
@@ -76,6 +42,8 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
   };
 
   useEffect(() => {
+    // Open camera immediately on mount for live mobile inspection
+    startLiveCamera();
     return () => {
       stopLiveCamera();
     };
@@ -86,7 +54,7 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
     setResult(null);
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera access not supported on this browser. Please use the Upload button.');
+        throw new Error('Camera access not supported on this device. Please use the Upload button.');
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -109,8 +77,8 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
         }
       }, 100);
     } catch (err: any) {
-      console.error('Camera stream access failed:', err);
-      setCameraError(err.message || 'Unable to access camera. Please allow camera permissions or upload an image.');
+      console.warn('Camera stream access warning:', err);
+      setCameraError(err.message || 'Unable to access camera directly. Please check browser permissions or upload an image.');
       setIsLiveCameraActive(false);
     }
   };
@@ -136,6 +104,9 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
           setSelectedImage(dataUrl);
           setIsLiveCaptured(true);
           setResult(null);
+
+          // Automatically trigger AI verification upon frame capture
+          runAIAnalysisOnFile(file);
         }
       }, 'image/jpeg', 0.92);
     }
@@ -151,54 +122,44 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
       setIsLiveCaptured(false);
       setResult(null);
       stopLiveCamera();
+      runAIAnalysisOnFile(file);
     }
   };
 
-  const handleSelectPreset = (sample: typeof PRESET_SAMPLES[0]) => {
-    setSelectedImage(sample.imageUrl);
-    setSelectedFile(null);
-    setSelectedHint(sample.hint);
-    setIsLiveCaptured(false);
-    setResult(null);
-    stopLiveCamera();
-  };
-
-  const handleRunAIAnalysis = async () => {
+  const runAIAnalysisOnFile = async (fileToUpload: File | Blob) => {
     setIsAnalyzing(true);
     setResult(null);
 
     try {
       setAnalysisStep('Uploading frame & preprocessing image matrix...');
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(r => setTimeout(r, 350));
 
-      setAnalysisStep('Extracting deep spectral & texture feature maps...');
-      await new Promise(r => setTimeout(r, 600));
+      setAnalysisStep('Querying Google Gemini 3.6 Flash Vision AI...');
+      await new Promise(r => setTimeout(r, 450));
 
       setAnalysisStep('Computing Wet/Dry/Hazardous segregation purity scores...');
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 350));
 
-      // Call verification API with real file or converted sample blob
-      let fileToUpload: File | Blob;
-      if (selectedFile) {
-        fileToUpload = selectedFile;
-      } else if (selectedImage && (selectedImage.startsWith('http') || selectedImage.startsWith('blob:'))) {
-        try {
-          const resImg = await fetch(selectedImage);
-          const blob = await resImg.blob();
-          fileToUpload = new File([blob], `waste_sample_${selectedHint}.jpg`, { type: blob.type || 'image/jpeg' });
-        } catch {
-          fileToUpload = new File([`waste_sample_${selectedHint}_${Date.now()}`], `waste_sample_${selectedHint}.jpg`, { type: 'image/jpeg' });
-        }
-      } else {
-        fileToUpload = new File([`waste_sample_${selectedHint}_${Date.now()}`], `waste_sample_${selectedHint}.jpg`, { type: 'image/jpeg' });
-      }
-
-      const res = await workerApi.verifySegregation(fileToUpload, task?.id, selectedHint);
+      const res = await workerApi.verifySegregation(fileToUpload, task?.id, task?.category);
       setResult(res);
     } catch (err) {
       console.error('AI verification failed:', err);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleManualRunAIAnalysis = () => {
+    if (selectedFile) {
+      runAIAnalysisOnFile(selectedFile);
+    } else if (selectedImage) {
+      fetch(selectedImage)
+        .then(r => r.blob())
+        .then(blob => runAIAnalysisOnFile(blob))
+        .catch(() => {
+          const dummyFile = new File(['dummy'], 'sample.jpg', { type: 'image/jpeg' });
+          runAIAnalysisOnFile(dummyFile);
+        });
     }
   };
 
@@ -216,7 +177,7 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden my-6 animate-scaleUp">
         {/* Header Bar */}
         <div className="flex items-center justify-between px-5 py-4 bg-slate-800/80 border-b border-slate-700">
@@ -226,7 +187,7 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-slate-100 text-base">
-                {language === 'mr' ? 'AI कचरा वर्गीकरण तपासणी' : 'AI Waste Segregation Verification'}
+                {language === 'mr' ? 'AI कचरा वर्गीकरण तपासणी (थेट कॅमेरा)' : 'Live AI Segregation Camera Scanner'}
               </h3>
               <p className="text-xs text-slate-400">
                 {task ? `${task.ticket_number} • ${task.title}` : 'Nagpur SmartSanitation Vision AI'}
@@ -243,7 +204,7 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 space-y-5 max-h-[80vh] overflow-y-auto">
+        <div className="p-5 space-y-4 max-h-[82vh] overflow-y-auto">
           {/* Quick Action Camera & Upload Bar */}
           <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
             <div className="flex items-center gap-2">
@@ -257,7 +218,11 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
                 }`}
               >
                 <span>📷</span>
-                <span>{isLiveCameraActive ? (language === 'mr' ? 'कॅमेरा सुरू आहे...' : 'Camera Live...') : (language === 'mr' ? 'थेट कॅमेरा सुरू करा' : 'Open Live Camera')}</span>
+                <span>
+                  {isLiveCameraActive
+                    ? (language === 'mr' ? 'कॅमेरा सुरू आहे...' : 'Camera Live...')
+                    : (language === 'mr' ? 'थेट कॅमेरा सुरू करा' : 'Open Live Camera')}
+                </span>
               </button>
 
               <button
@@ -292,34 +257,6 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
             </div>
           )}
 
-          {/* Preset Selector for Fast Field Testing */}
-          <div>
-            <label className="block text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">
-              {language === 'mr' ? 'किंवा नमुना कचरा निवडा' : 'Or Select Pre-tested Nagpur Samples'}
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {PRESET_SAMPLES.map((sample, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => handleSelectPreset(sample)}
-                  className={`p-2 rounded-xl text-left border transition-all ${
-                    selectedImage === sample.imageUrl && !isLiveCameraActive
-                      ? 'bg-amber-500/20 border-amber-500 text-amber-300 ring-2 ring-amber-500/30'
-                      : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
-                  }`}
-                >
-                  <span className="text-xs font-bold block truncate">
-                    {language === 'mr' ? sample.name_mr : sample.name}
-                  </span>
-                  <span className="text-[10px] text-slate-400 block line-clamp-1 mt-0.5">
-                    {sample.desc}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Main Viewfinder / Live Video Stream / Captured Image */}
           <div className="relative rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 aspect-video max-h-80 flex items-center justify-center group shadow-2xl">
             {isLiveCameraActive ? (
@@ -340,7 +277,7 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
                     <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-amber-400 rounded-bl-lg" />
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-amber-400 rounded-br-lg" />
                     <span className="absolute top-2 left-3 text-[10px] font-mono text-amber-300 bg-slate-950/70 px-2 py-0.5 rounded">
-                      LIVE NMC VISION FEED
+                      LIVE NMC VISION CAMERA FEED
                     </span>
                   </div>
                 </div>
@@ -361,7 +298,7 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
                     className="px-6 py-2.5 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 text-slate-950 font-black text-sm rounded-2xl shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2 ring-4 ring-amber-400/30"
                   >
                     <span className="text-lg">📸</span>
-                    <span>{language === 'mr' ? 'फोटो काढा' : 'Click / Snap Photo'}</span>
+                    <span>{language === 'mr' ? 'फोटो काढा व तपासा' : 'Click & Run AI Verification'}</span>
                   </button>
                 </div>
               </div>
@@ -372,9 +309,15 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="text-center p-6 text-slate-500">
-                <span className="text-4xl block mb-2">📷</span>
-                <span className="text-sm">No photo captured yet</span>
+              <div
+                onClick={startLiveCamera}
+                className="text-center p-6 text-slate-400 cursor-pointer hover:bg-slate-900/50 transition-colors w-full h-full flex flex-col items-center justify-center"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-3xl mb-2">
+                  📷
+                </div>
+                <span className="text-sm font-bold text-slate-200 block">Click to Open Camera & Snap Waste Bin</span>
+                <span className="text-xs text-slate-500 mt-1">Live mobile camera feed for NMC Swachh Bharat purity audit</span>
               </div>
             )}
 
@@ -393,7 +336,7 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
               </div>
             )}
 
-            {/* Change Photo Overlay Button */}
+            {/* Retake / Upload Overlay Button when Photo is Frozen */}
             {!isLiveCameraActive && selectedImage && (
               <div className="absolute bottom-3 right-3 flex items-center gap-2 opacity-90 group-hover:opacity-100 transition-opacity">
                 <button
@@ -426,10 +369,10 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
             />
           </div>
 
-          {/* Action to trigger AI Scan */}
-          {!result && !isLiveCameraActive && (
+          {/* Action to trigger AI Scan manually if not auto-triggered */}
+          {!result && !isLiveCameraActive && selectedImage && !isAnalyzing && (
             <button
-              onClick={handleRunAIAnalysis}
+              onClick={handleManualRunAIAnalysis}
               disabled={isAnalyzing || !selectedImage}
               className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 bg-[length:200%_auto] hover:bg-right transition-all text-slate-950 font-black text-sm rounded-xl shadow-xl flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
             >
@@ -470,7 +413,7 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
                             : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                         }`}
                       >
-                        {result.verdict === 'PASSED' ? '✓ Segregation Verified' : result.verdict === 'WARNING' ? '⚠️ Minor Contamination' : '✕ Unsegregated'}
+                        {result.verdict === 'PASSED' ? '✓ Segregation Verified' : result.verdict === 'WARNING' ? '⚠️ Minor Contamination' : (result.overall_score === 0 ? '✕ Non-Waste / Failed' : '✕ Unsegregated')}
                       </span>
                       <span className="text-[11px] font-mono text-slate-400">
                         Conf: {(result.ai_confidence * 100).toFixed(1)}%
@@ -514,6 +457,40 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
                 </div>
               </div>
 
+              {/* Bonus Tier Matrix Scaled to Segregation Score */}
+              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 text-xs space-y-1.5">
+                <div className="flex items-center justify-between text-slate-300 font-bold">
+                  <span>💰 {language === 'mr' ? 'वर्गीकरण आधारित बक्षीस रचना:' : 'NMC Purity-Scaled Incentive Tier:'}</span>
+                  <span className="text-lime-400 font-extrabold">+₹{result.incentive_earned_inr} Awarded</span>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 text-center text-[10px] pt-1">
+                  <div className={`p-1.5 rounded-lg border ${result.overall_score >= 95 ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold ring-1 ring-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
+                    <span className="block font-medium">95%+</span>
+                    <span className="font-bold text-lime-400">₹50</span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg border ${result.overall_score >= 90 && result.overall_score < 95 ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold ring-1 ring-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
+                    <span className="block font-medium">90-94%</span>
+                    <span className="font-bold text-lime-400">₹40</span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg border ${result.overall_score >= 80 && result.overall_score < 90 ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold ring-1 ring-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
+                    <span className="block font-medium">80-89%</span>
+                    <span className="font-bold text-lime-400">₹30</span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg border ${result.overall_score >= 70 && result.overall_score < 80 ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold ring-1 ring-amber-400' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
+                    <span className="block font-medium">70-79%</span>
+                    <span className="font-bold text-lime-400">₹20</span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg border ${result.overall_score >= 60 && result.overall_score < 70 ? 'bg-amber-500/20 border-amber-400 text-amber-300 font-bold ring-1 ring-amber-400' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
+                    <span className="block font-medium">60-69%</span>
+                    <span className="font-bold text-lime-400">₹10</span>
+                  </div>
+                  <div className={`p-1.5 rounded-lg border ${result.overall_score < 60 ? 'bg-rose-500/20 border-rose-400 text-rose-300 font-bold ring-1 ring-rose-400' : 'bg-slate-950 border-slate-800 text-slate-400'}`}>
+                    <span className="block font-medium">&lt;60%</span>
+                    <span className="font-bold text-slate-400">₹0</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Detected Objects & Contaminants */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
@@ -549,10 +526,10 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setResult(null)}
+                  onClick={startLiveCamera}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl"
                 >
-                  Rescan Photo
+                  📸 Retake Photo
                 </button>
                 <button
                   type="button"

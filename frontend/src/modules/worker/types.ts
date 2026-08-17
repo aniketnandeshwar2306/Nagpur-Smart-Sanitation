@@ -108,3 +108,19 @@ export interface WardZoneGeo {
   color_code: string;
   boundary_coordinates: [number, number][];
 }
+
+export interface AISpotDetectionResult {
+  category: WasteCategory | string;
+  priority: TaskPriority;
+  suggested_title: string;
+  description: string;
+  ward_number: number;
+  zone_name: string;
+  address: string;
+  landmark?: string;
+  detected_materials?: string[];
+  suggested_action?: string;
+  confidence: number;
+  is_waste: boolean;
+}
+

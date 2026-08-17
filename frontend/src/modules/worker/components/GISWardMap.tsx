@@ -9,6 +9,7 @@ interface GISWardMapProps {
   onVerifyTask: (task: DailyTask) => void;
   selectedTaskId?: string | null;
   workerCoordinates?: [number, number];
+  selectedZone?: string;
 }
 
 // Global declaration for Leaflet injected window
@@ -25,7 +26,8 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
   onSelectTask,
   onVerifyTask,
   selectedTaskId,
-  workerCoordinates
+  workerCoordinates,
+  selectedZone
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -36,10 +38,26 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
 
   const [mapLoaded, setMapLoaded] = useState<boolean>(false);
   const [mapStyle, setMapStyle] = useState<'dark' | 'streets' | 'satellite'>('dark');
-  const [activeZoneFilter, setActiveZoneFilter] = useState<string>('ALL');
+  const [activeZoneFilter, setActiveZoneFilter] = useState<string>(selectedZone || 'ALL');
   const [showWards, setShowWards] = useState<boolean>(true);
   const [showRoute, setShowRoute] = useState<boolean>(true);
+  const [hideCompletedPins, setHideCompletedPins] = useState<boolean>(true);
   const [selectedTask, setSelectedTask] = useState<DailyTask | null>(null);
+
+  // Sync activeZoneFilter when parent selectedZone changes
+  useEffect(() => {
+    if (selectedZone) {
+      const match = wards.find(w => w.zone_name.toLowerCase().includes(selectedZone.toLowerCase()) || selectedZone.toLowerCase().includes(w.zone_name.toLowerCase()));
+      if (match) {
+        const zoneKeyword = match.zone_name.split(' - ')[1] || match.zone_name;
+        setActiveZoneFilter(zoneKeyword);
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo([match.center_lat, match.center_lng], 14, { duration: 1.2 });
+        }
+      }
+    }
+  }, [selectedZone, wards]);
+
 
   // Worker's live GPS location (defaults to Zone 2 Dharampeth if GPS disabled)
   const workerLocation: [number, number] = workerCoordinates || [21.1470, 79.0580];
@@ -214,6 +232,9 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
       if (activeZoneFilter !== 'ALL' && !task.location.zone_name.includes(activeZoneFilter)) {
         return false;
       }
+      if (hideCompletedPins && task.status === 'COMPLETED') {
+        return false;
+      }
       return true;
     });
 
@@ -287,7 +308,7 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
 
       routeLayerRef.current.addLayer(polyline);
     }
-  }, [mapLoaded, tasks, activeZoneFilter, showRoute, selectedTaskId, workerCoordinates]);
+  }, [mapLoaded, tasks, activeZoneFilter, showRoute, hideCompletedPins, selectedTaskId, workerCoordinates]);
 
   const handleCenterOnWorker = () => {
     if (mapInstanceRef.current) {
@@ -315,17 +336,31 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
         <div className="flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-md p-1 rounded-xl border border-slate-700 shadow-xl pointer-events-auto">
           <select
             value={activeZoneFilter}
-            onChange={e => setActiveZoneFilter(e.target.value)}
+            onChange={e => {
+              const val = e.target.value;
+              setActiveZoneFilter(val);
+              if (val !== 'ALL' && mapInstanceRef.current) {
+                const matchedWard = wards.find(w => w.zone_name.toLowerCase().includes(val.toLowerCase()) || val.toLowerCase().includes(w.zone_name.toLowerCase()));
+                if (matchedWard) {
+                  mapInstanceRef.current.flyTo([matchedWard.center_lat, matchedWard.center_lng], 14, { duration: 1 });
+                }
+              }
+            }}
             className="bg-slate-800 text-xs font-semibold text-amber-400 px-2.5 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:ring-1 focus:ring-amber-500"
           >
             <option value="ALL">📍 All Nagpur Zones ({tasks.length})</option>
+            <option value="Laxmi Nagar">Zone 1 - Laxmi Nagar</option>
             <option value="Dharampeth">Zone 2 - Dharampeth</option>
+            <option value="Hanuman Nagar">Zone 3 - Hanuman Nagar</option>
             <option value="Dhantoli">Zone 4 - Dhantoli</option>
-            <option value="Hanuman">Zone 3 - Hanuman Nagar</option>
-            <option value="Laxmi">Zone 1 - Laxmi Nagar</option>
+            <option value="Nehru Nagar">Zone 5 - Nehru Nagar</option>
             <option value="Gandhibagh">Zone 6 - Gandhibagh</option>
+            <option value="Satranjipura">Zone 7 - Satranjipura</option>
+            <option value="Lakadganj">Zone 8 - Lakadganj</option>
+            <option value="Ashi Nagar">Zone 9 - Ashi Nagar</option>
             <option value="Mangalwari">Zone 10 - Mangalwari</option>
           </select>
+
 
           <button
             onClick={() => setShowWards(!showWards)}
@@ -349,6 +384,20 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
             title="Toggle Collection Route"
           >
             {language === 'mr' ? 'कचरा मार्ग' : 'Route'}
+          </button>
+
+          <button
+            onClick={() => setHideCompletedPins(!hideCompletedPins)}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              hideCompletedPins
+                ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
+            }`}
+            title={hideCompletedPins ? 'Show Resolved Pins' : 'Hide Resolved Pins'}
+          >
+            {hideCompletedPins
+              ? (language === 'mr' ? '✓ पूर्ण लपवा' : '✓ Hide Done')
+              : (language === 'mr' ? '✓ पूर्ण दाखवा' : '✓ Show Done')}
           </button>
         </div>
 

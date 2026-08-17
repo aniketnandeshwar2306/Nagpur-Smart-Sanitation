@@ -32,7 +32,7 @@ export const App: React.FC = () => {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/citizen" element={<CitizenDashboard />} />
             <Route path="/worker" element={<WorkerDashboard />} />
-            <Route path="/" element={<Navigate to="/admin" replace />} />
+            <Route path="/" element={<Navigate to="/worker" replace />} />
           </Routes>
         </main>
       </div>
