@@ -127,31 +127,50 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch leaves from backend
+  // Fetch leaves from backend & local storage
   const loadLeaves = () => {
     const workerId = user?.id || 'W-002';
+    
+    let localLeaves: LeaveRecord[] = [];
+    try {
+      const cached = localStorage.getItem('nss_worker_leaves');
+      if (cached) {
+        localLeaves = JSON.parse(cached);
+      }
+    } catch {}
+
     fetch(`${API_BASE_URL}/api/worker/leaves?worker_id=${encodeURIComponent(workerId)}`)
       .then(res => res.json())
       .then(data => {
-        if (data.history && data.history.length > 0) {
-          setLeavesList(prev => {
-            const seen = new Set(data.history.map((h: LeaveRecord) => h.leave_id));
-            const merged = [...data.history, ...prev.filter(p => !seen.has(p.leave_id))];
-            try {
-              localStorage.setItem('nss_worker_leaves', JSON.stringify(merged));
-            } catch {}
-            return merged;
-          });
+        const serverHistory: LeaveRecord[] = data.history || [];
+        
+        const map = new Map<string, LeaveRecord>();
+        serverHistory.forEach(l => map.set(l.leave_id, l));
+        localLeaves.forEach(l => map.set(l.leave_id, l));
+
+        const merged = Array.from(map.values());
+        if (merged.length > 0) {
+          setLeavesList(merged);
+          try {
+            localStorage.setItem('nss_worker_leaves', JSON.stringify(merged));
+          } catch {}
         }
-        if (data.balance) {
-          setBalances({
-            casual: data.balance.casual_leave_remaining ?? 8,
-            sick: data.balance.sick_leave_remaining ?? 6,
-            earned: data.balance.earned_leave_remaining ?? 14,
-          });
-        }
+
+        const approvedCl = merged.filter(l => l.leave_type === 'Casual Leave' && l.status === 'Approved').reduce((acc, curr) => acc + (curr.days || 1), 0);
+        const approvedSl = merged.filter(l => l.leave_type === 'Sick Leave' && l.status === 'Approved').reduce((acc, curr) => acc + (curr.days || 1), 0);
+        const approvedEl = merged.filter(l => l.leave_type === 'Earned Leave' && l.status === 'Approved').reduce((acc, curr) => acc + (curr.days || 1), 0);
+
+        setBalances({
+          casual: Math.max(0, 10 - approvedCl),
+          sick: Math.max(0, 8 - approvedSl),
+          earned: Math.max(0, 15 - approvedEl),
+        });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (localLeaves.length > 0) {
+          setLeavesList(localLeaves);
+        }
+      });
   };
 
   useEffect(() => {
@@ -234,6 +253,9 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
   const totalCollected = Object.values(collectedBins).filter(Boolean).length;
   const totalBins = ROUTE_BINS.length;
 
+  const latestLeave = leavesList.length > 0 ? leavesList[0] : null;
+  const hasApprovedLeave = leavesList.some(l => l.status === 'Approved');
+
   return (
     <div className="space-y-6 eco-animate-fade pb-12 relative">
       {/* Toast Notification */}
@@ -250,7 +272,7 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
             👷
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">{WORKER.name}</h1>
+            <h1 className="text-xl font-bold text-white tracking-tight">{user?.name || WORKER.name}</h1>
             <p className="text-emerald-100/80 dark:text-slate-300 text-sm font-medium">{WORKER.role} · {WORKER.zone}</p>
           </div>
         </div>
@@ -259,10 +281,19 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
           <div className="bg-white/10 dark:bg-slate-800 border border-white/15 dark:border-slate-700 px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-100 flex items-center gap-2">
             🚛 {WORKER.vehicle}
           </div>
-          <div className="bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border border-emerald-200 dark:border-emerald-800">
-            <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse" />
-            On Duty
-          </div>
+          
+          {hasApprovedLeave ? (
+            <div className="bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border border-amber-300 dark:border-amber-800">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              🏖️ On Approved Leave
+            </div>
+          ) : (
+            <div className="bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border border-emerald-200 dark:border-emerald-800">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse" />
+              🟢 On Active Duty
+            </div>
+          )}
+
           <button
             onClick={() => setIsLeaveModalOpen(true)}
             className="bg-amber-400 hover:bg-amber-300 text-slate-950 px-4 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
@@ -271,6 +302,49 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* ── REAL-TIME LEAVE STATUS NOTICE BANNER ── */}
+      {latestLeave && (
+        <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 transition-all ${
+          latestLeave.status === 'Approved'
+            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+            : latestLeave.status === 'Rejected'
+            ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200'
+            : 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className="text-2xl shrink-0">
+              {latestLeave.status === 'Approved' ? '🏖️' : latestLeave.status === 'Rejected' ? '❌' : '⏳'}
+            </div>
+            <div>
+              <div className="text-xs font-bold flex items-center gap-2">
+                <span>Leave Status: {latestLeave.leave_type} ({latestLeave.leave_id})</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                  latestLeave.status === 'Approved'
+                    ? 'bg-emerald-200 text-emerald-900 border-emerald-400'
+                    : latestLeave.status === 'Rejected'
+                    ? 'bg-rose-200 text-rose-900 border-rose-400'
+                    : 'bg-amber-200 text-amber-900 border-amber-400'
+                }`}>
+                  {latestLeave.status === 'Approved' && '✓ Approved by Supervisor'}
+                  {latestLeave.status === 'Rejected' && '✕ Not Approved'}
+                  {latestLeave.status === 'Pending Approval' && '⏳ Under Supervisor Review'}
+                </span>
+              </div>
+              <p className="text-[11px] opacity-80 mt-0.5">
+                Dates: <strong>{latestLeave.start_date} to {latestLeave.end_date}</strong> ({latestLeave.days} day{latestLeave.days > 1 ? 's' : ''}) • Reason: "{latestLeave.reason}"
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setIsLeaveModalOpen(true)}
+            className="text-xs font-bold underline hover:opacity-80 shrink-0 cursor-pointer"
+          >
+            Apply Again
+          </button>
+        </div>
+      )}
 
       {/* Main Tab Content */}
       <div className="space-y-6">
@@ -602,9 +676,11 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
                             <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-block border ${
                               l.status === 'Approved'
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                                : l.status === 'Rejected'
+                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border-rose-300 dark:border-rose-800'
                                 : 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border-amber-300 dark:border-amber-800'
                             }`}>
-                              {l.status}
+                              {l.status === 'Approved' ? '✓ Approved' : l.status === 'Rejected' ? '✕ Rejected' : '⏳ Pending Review'}
                             </span>
                           </td>
                         </tr>
