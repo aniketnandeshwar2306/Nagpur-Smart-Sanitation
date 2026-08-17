@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, timezone
 
-from database import get_db
+from database import get_db, seed_all_mock_data
 
 router = APIRouter(
     prefix="/api/admin",
@@ -22,6 +22,27 @@ class ComplaintAssignRequest(BaseModel):
 @router.get("/")
 def get_admin_status():
     return {"status": "success", "message": "Admin module operational with MongoDB"}
+
+
+@router.post("/seed-database")
+def trigger_database_seed(force: bool = False, db=Depends(get_db)):
+    """Seed or update all baseline mock data into MongoDB collections."""
+    try:
+        seed_all_mock_data(force=force)
+        return {
+            "status": "success",
+            "message": "Database successfully populated with Nagpur Smart Sanitation baseline datasets.",
+            "counts": {
+                "users": db.users.count_documents({}) if db is not None else 0,
+                "complaints": db.complaints.count_documents({}) if db is not None else 0,
+                "smart_bins": db.smart_bins.count_documents({}) if db is not None else 0,
+                "worker_tasks": db.worker_tasks.count_documents({}) if db is not None else 0,
+                "workers": db.workers.count_documents({}) if db is not None else 0,
+                "worker_leaves": db.worker_leaves.count_documents({}) if db is not None else 0,
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database seed failed: {str(e)}")
 
 
 @router.get("/overview")

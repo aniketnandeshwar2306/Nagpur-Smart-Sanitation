@@ -115,6 +115,40 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     vehicle: 'NMC Tipper',
   });
 
+  // Fetch live complaints & workers from MongoDB on load
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/admin/complaints`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: Complaint[] = data.map((d: any) => ({
+            id: d.ticket_id,
+            type: d.waste_type || 'dry',
+            status: d.status || 'submitted',
+            severity: d.severity || 3,
+            area: d.assigned_authority?.department || 'Nagpur Zone',
+            time: d.created_at ? new Date(d.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+            citizen: d.citizen_name || 'Nagpur Resident',
+            phone: '+91 98231 44556',
+            assignedTo: d.assigned_authority?.name || 'Unassigned',
+            imageUrl: d.image_url,
+            description: d.description,
+          }));
+          setComplaints(mapped);
+        }
+      })
+      .catch(() => {});
+
+    fetch(`${API_BASE_URL}/api/worker/workers`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setWorkers(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Listen to live complaints from citizen submissions
   useEffect(() => {
     const handleNewComplaint = (evt: Event) => {
@@ -128,7 +162,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           severity: item.severity || 3,
           area: 'Ward 14 (Geotagged)',
           time: 'Just now',
-          citizen: 'Aniket Nandeshwar',
+          citizen: item.citizen_name || 'Nagpur Resident',
           phone: '+91 98231 44556',
           assignedTo: item.assigned_authority?.name || 'Inspector Vijay Deshmukh',
           imageUrl: item.image_url,
