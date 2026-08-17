@@ -144,22 +144,28 @@ def run_gemini_waste_analysis(image_base64_str: str) -> dict:
     clean_b64 = re.sub(r'[^A-Za-z0-9+/=]', '', clean_b64)
 
     prompt = (
-        "You are an expert municipal solid waste inspector AI for Nagpur Municipal Corporation (NMC).\n"
-        "Analyze this waste/garbage photo and return a strict JSON object with this EXACT schema:\n"
-        "{\n"
-        '  "is_garbage": true,\n'
-        '  "waste_type": "wet" | "dry" | "hazardous" | "e-waste" | "mixed",\n'
-        '  "confidence": 94,\n'
-        '  "severity": 3,\n'
-        '  "detected_items": ["item1", "item2", "item3"],\n'
-        '  "description": "Short 1-2 sentence description of the waste accumulation.",\n'
-        '  "verification_message": "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."\n'
-        "}\n"
-        "Rules:\n"
-        "- If the image contains street litter, garbage, solid waste, organic waste, plastic, or debris, set is_garbage to true.\n"
-        "- If the image is a clear non-garbage photo (e.g. clean sky, pet, person with no waste), set is_garbage to false.\n"
-        "- Classify waste_type accurately as wet (food/kitchen/vegetables/leaves), dry (plastic/paper/boxes/cans), hazardous (chemicals/medical/broken glass), e-waste (electronics/wires), or mixed.\n"
-        "- Return ONLY valid JSON."
+        "You are an AI civic image verifier for Nagpur Municipal Corporation (NMC).\n"
+        "Carefully analyze this image to determine if it shows a solid municipal waste, street litter, or garbage accumulation requiring cleanup.\n\n"
+        "CRITICAL CLASSIFICATION RULES:\n"
+        "1. NON-GARBAGE & PERSONAL PHOTOS:\n"
+        "   If the image is a SELFIE, PORTRAIT OF A PERSON, HUMAN FACE, BODY, PET/ANIMAL, INDOOR ROOM, LIVING SPACE, DOCUMENT, CAR/VEHICLE, OR CLEAN ENVIRONMENT WITH NO GARBAGE:\n"
+        "   - MUST set \"is_garbage\": false\n"
+        "   - Set \"waste_type\": \"none\"\n"
+        "   - Set \"confidence\": 98\n"
+        "   - Set \"severity\": 1\n"
+        "   - Set \"detected_items\": [\"Person / Human Subject / Non-waste Image\"]\n"
+        "   - Set \"description\": \"Personal photo or non-waste subject detected.\"\n"
+        "   - Set \"verification_message\": \"This photo contains a person or non-waste subject and does not appear to be a municipal garbage incident.\"\n\n"
+        "2. GENUINE SOLID WASTE / GARBAGE:\n"
+        "   If the image shows garbage heaps, street litter, plastic waste, organic food scraps, hazardous waste, or overflowing garbage bins:\n"
+        "   - Set \"is_garbage\": true\n"
+        "   - Set \"waste_type\": \"wet\" | \"dry\" | \"hazardous\" | \"e-waste\" | \"mixed\"\n"
+        "   - Set \"confidence\": 85 to 99\n"
+        "   - Set \"severity\": 1 to 5\n"
+        "   - Set \"detected_items\": list of 2-4 detected waste items\n"
+        "   - Set \"description\": concise description of the waste accumulation\n"
+        "   - Set \"verification_message\": \"Verified municipal waste incident by Nagpur SmartSanitation AI Engine.\"\n\n"
+        "Return ONLY a valid JSON object matching the schema."
     )
 
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
@@ -197,15 +203,17 @@ def run_gemini_waste_analysis(image_base64_str: str) -> dict:
                                 json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
                                 if json_match:
                                     parsed = json.loads(json_match.group())
-                                    print(f"[Gemini AI Vision SUCCESS] Model {model} classified: {parsed.get('waste_type')}", flush=True)
+                                    is_g = bool(parsed.get("is_garbage", False))
+                                    w_type = str(parsed.get("waste_type", "dry" if is_g else "none")).lower()
+                                    print(f"[Gemini AI Vision SUCCESS] Model {model} classified: is_garbage={is_g}, type={w_type}", flush=True)
                                     return {
-                                        "is_garbage": bool(parsed.get("is_garbage", True)),
-                                        "waste_type": str(parsed.get("waste_type", "dry")).lower(),
-                                        "confidence": int(parsed.get("confidence", 94)),
-                                        "severity": int(parsed.get("severity", 3)),
-                                        "detected_items": list(parsed.get("detected_items", ["Municipal waste accumulation"])),
-                                        "description": str(parsed.get("description", "Solid waste detected by Gemini Vision AI.")),
-                                        "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."))
+                                        "is_garbage": is_g,
+                                        "waste_type": w_type,
+                                        "confidence": int(parsed.get("confidence", 95)),
+                                        "severity": int(parsed.get("severity", 3 if is_g else 1)),
+                                        "detected_items": list(parsed.get("detected_items", ["Municipal waste accumulation" if is_g else "Non-waste subject"])),
+                                        "description": str(parsed.get("description", "Solid waste detected by Gemini Vision AI." if is_g else "No garbage detected.")),
+                                        "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident by Nagpur SmartSanitation AI Engine." if is_g else "This photo contains a person or non-waste subject."))
                                     }
                 except Exception as e:
                     print(f"[Gemini REST API Warning with {model} (config={with_config})] {e}", flush=True)
@@ -228,15 +236,17 @@ def run_gemini_waste_analysis(image_base64_str: str) -> dict:
                 json_match = re.search(r'\{.*\}', response.text.strip(), re.DOTALL)
                 if json_match:
                     parsed = json.loads(json_match.group())
-                    print(f"[Gemini SDK SUCCESS] Classified: {parsed.get('waste_type')}", flush=True)
+                    is_g = bool(parsed.get("is_garbage", False))
+                    w_type = str(parsed.get("waste_type", "dry" if is_g else "none")).lower()
+                    print(f"[Gemini SDK SUCCESS] Classified: is_garbage={is_g}, type={w_type}", flush=True)
                     return {
-                        "is_garbage": bool(parsed.get("is_garbage", True)),
-                        "waste_type": str(parsed.get("waste_type", "dry")).lower(),
-                        "confidence": int(parsed.get("confidence", 94)),
-                        "severity": int(parsed.get("severity", 3)),
-                        "detected_items": list(parsed.get("detected_items", ["Municipal waste accumulation"])),
-                        "description": str(parsed.get("description", "Solid waste detected by Gemini Vision AI.")),
-                        "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."))
+                        "is_garbage": is_g,
+                        "waste_type": w_type,
+                        "confidence": int(parsed.get("confidence", 95)),
+                        "severity": int(parsed.get("severity", 3 if is_g else 1)),
+                        "detected_items": list(parsed.get("detected_items", ["Municipal waste accumulation" if is_g else "Non-waste subject"])),
+                        "description": str(parsed.get("description", "Solid waste detected by Gemini Vision AI." if is_g else "No garbage detected.")),
+                        "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident by Nagpur SmartSanitation AI Engine." if is_g else "This photo contains a person or non-waste subject."))
                     }
         except Exception as ex2:
             print(f"[Gemini SDK Warning] {ex2}", flush=True)

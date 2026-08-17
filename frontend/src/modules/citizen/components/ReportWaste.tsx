@@ -600,12 +600,35 @@ const ReportWaste: React.FC = () => {
 
           {/* AI Non-Garbage Caution Banner */}
           {aiAnalysisResult && !aiAnalysisResult.is_garbage && !isAiScanning && (
-            <div className="bg-amber-500/15 border border-amber-500/40 rounded-2xl p-4 flex items-start gap-3 shadow-lg animate-pulse">
-              <span className="text-2xl">⚠️</span>
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-amber-300">AI Verification Notice</div>
-                <div className="text-sm font-semibold text-slate-100 mt-0.5">{aiAnalysisResult.verification_message}</div>
-                <div className="text-xs text-slate-400 mt-1">If this is a valid civic waste issue, confirm the category below to proceed.</div>
+            <div className="bg-amber-500/15 border border-amber-500/40 rounded-2xl p-4 flex items-start gap-3 shadow-lg">
+              <span className="text-3xl">👤</span>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold uppercase tracking-wider text-amber-300">Non-Waste Photo Detected</div>
+                  <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/40">
+                    {aiAnalysisResult.confidence}% Confidence
+                  </span>
+                </div>
+                <div className="text-sm font-semibold text-slate-100 mt-1">{aiAnalysisResult.verification_message}</div>
+                <div className="text-xs text-slate-400 mt-1">
+                  Gemini Vision identified this as a personal portrait/non-waste image. Please upload a photo showing the solid waste accumulation.
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={retake}
+                    className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    📷 Take Waste Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium transition-colors cursor-pointer"
+                  >
+                    🖼️ Pick from Gallery
+                  </button>
+                </div>
               </div>
             </div>
           )}
