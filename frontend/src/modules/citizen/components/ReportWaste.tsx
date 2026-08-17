@@ -209,7 +209,7 @@ CRITICAL RULES:
 
 Return ONLY a valid JSON object.`;
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${customKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${customKey}`;
         const body = {
           contents: [{
             parts: [
