@@ -307,6 +307,78 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
         )}
 
       </div>
+
+      {/* Floating Bottom Quick Action Bar for Mobile Workers */}
+      <div className="fixed bottom-3 left-4 right-4 max-w-lg mx-auto z-40">
+        <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-2 shadow-2xl flex items-center justify-between gap-2 ring-1 ring-white/10">
+          <button
+            onClick={() => setActiveTab('map')}
+            className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+              activeTab === 'map' ? 'bg-slate-800 text-amber-400' : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            <span>🗺️</span>
+            <span>Route Map</span>
+          </button>
+
+          {/* Big Center AI Camera Trigger */}
+          <button
+            onClick={() => handleOpenVerifyModal()}
+            className="flex-1 py-2.5 px-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/25 flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-95 transition-all"
+          >
+            <span>📷</span>
+            <span>AI Camera</span>
+          </button>
+
+          <button
+            onClick={() => setIsSafetyChecklistOpen(true)}
+            className="flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 text-slate-300 hover:text-white"
+          >
+            <span>🛡️</span>
+            <span>Safety SOP</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Toast Notification Alert */}
+      {toastMessage && (
+        <div className="fixed top-20 right-4 z-50 max-w-sm bg-slate-900/95 border border-amber-500/50 rounded-xl p-3.5 shadow-2xl backdrop-blur-md animate-slideInRight text-xs flex items-center gap-2.5">
+          <span className="text-lg">
+            {toastMessage.type === 'success' ? '✅' : toastMessage.type === 'warn' ? '⚠️' : 'ℹ️'}
+          </span>
+          <span className="font-semibold text-slate-200">{toastMessage.title}</span>
+        </div>
+      )}
+
+      {/* AI Segregation Verification Modal */}
+      {isVerifyModalOpen && (
+        <SegregationModal
+          task={verifyingTask}
+          language={language}
+          onClose={() => setIsVerifyModalOpen(false)}
+          onVerificationComplete={handleVerificationComplete}
+        />
+      )}
+
+      {/* Task Details Modal */}
+      {selectedTaskDetail && (
+        <TaskDetailModal
+          task={selectedTaskDetail}
+          language={language}
+          onClose={() => setSelectedTaskDetail(null)}
+          onVerify={task => handleOpenVerifyModal(task)}
+          onStatusUpdate={handleStatusChange}
+          onNavigateToMap={handleNavigateToMap}
+        />
+      )}
+
+      {/* Safety Checklist Modal */}
+      {isSafetyChecklistOpen && (
+        <SafetyChecklistModal
+          language={language}
+          onClose={() => setIsSafetyChecklistOpen(false)}
+        />
+      )}
     </div>
   );
 };
