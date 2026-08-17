@@ -188,6 +188,10 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     const errorBody = await res.text().catch(() => 'Unknown error');
     throw new Error(`API ${res.status}: ${errorBody}`);
   }
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType && !contentType.includes('application/json')) {
+    throw new Error(`Invalid response format from ${path}`);
+  }
   return res.json() as Promise<T>;
 }
 

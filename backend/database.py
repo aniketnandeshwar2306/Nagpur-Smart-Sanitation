@@ -14,6 +14,9 @@ if not hasattr(bcrypt, "__about__"):
 from passlib.context import CryptContext
 from dotenv import load_dotenv
 
+_backend_dir = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(_backend_dir, ".env"))
+load_dotenv(os.path.join(_backend_dir, "..", ".env"))
 load_dotenv()
 
 MONGO_URL = os.getenv("MONGODB_URI") or os.getenv("MONGO_URL", "mongodb://localhost:27017")
