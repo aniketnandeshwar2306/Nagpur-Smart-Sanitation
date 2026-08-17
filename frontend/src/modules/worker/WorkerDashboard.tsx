@@ -156,6 +156,13 @@ export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
 
   useEffect(() => {
     loadLeaves();
+
+    const handleLeaveUpdate = () => {
+      loadLeaves();
+    };
+
+    window.addEventListener('worker-leave-updated', handleLeaveUpdate);
+    return () => window.removeEventListener('worker-leave-updated', handleLeaveUpdate);
   }, [user?.id]);
 
   const showToast = (msg: string) => {

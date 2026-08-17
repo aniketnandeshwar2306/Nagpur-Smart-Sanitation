@@ -228,17 +228,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleUpdateLeaveStatus = async (leaveId: string, workerId: string, newStatus: 'Approved' | 'Rejected') => {
+    // 1. Optimistic state & local storage update
+    setLeaveRequests(prev => {
+      const updated = prev.map(l => l.leave_id === leaveId ? { ...l, status: newStatus } : l);
+      try {
+        localStorage.setItem('nss_worker_leaves', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    setWorkers(prev => prev.map(w => w.id === workerId ? { ...w, status: newStatus === 'Approved' ? 'on_leave' : 'active' } : w));
+    showToast(`✓ Leave application ${leaveId} marked as ${newStatus}!`);
+
+    // 2. Broadcast event for cross-component reactive update
+    window.dispatchEvent(new CustomEvent('worker-leave-updated', { detail: { leaveId, workerId, status: newStatus } }));
+
+    // 3. API update
     try {
       await fetch(`${API_BASE_URL}/api/admin/leaves/${encodeURIComponent(leaveId)}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, worker_id: workerId }),
       });
-    } catch {}
-
-    setLeaveRequests(prev => prev.map(l => l.leave_id === leaveId ? { ...l, status: newStatus } : l));
-    setWorkers(prev => prev.map(w => w.id === workerId ? { ...w, status: newStatus === 'Approved' ? 'on_leave' : 'active' } : w));
-    showToast(`✓ Leave application ${leaveId} marked as ${newStatus}!`);
+    } catch (err) {
+      console.warn('[Admin] Offline leave status update:', err);
+    }
   };
 
   const handleAssignSubmit = async (e: React.FormEvent) => {
