@@ -25,14 +25,14 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigate }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigate?.('citizen')}
-            className="px-5 py-2.5 rounded-full border border-[#D0D7CA] bg-white text-[#1A2E22] font-semibold text-sm hover:bg-[#F5F5F0] transition-all flex items-center gap-2 shadow-xs"
+            className="px-5 py-2.5 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-semibold text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition-all flex items-center gap-2 shadow-xs cursor-pointer"
           >
             <span>🎧</span>
             <span>Contact Support</span>
           </button>
           <button
             onClick={() => onNavigate?.('reports')}
-            className="px-5 py-2.5 rounded-full bg-[#2D5A3F] text-white font-semibold text-sm hover:bg-[#21432E] transition-all flex items-center gap-2 shadow-sm"
+            className="px-5 py-2.5 rounded-full bg-[#1E3E2B] dark:bg-emerald-600 text-white font-semibold text-sm hover:bg-[#142B1E] dark:hover:bg-emerald-500 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
           >
             <span>📊</span>
             <span>View Reports</span>
@@ -162,37 +162,37 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ onNavigate }) => {
             </h2>
             <div className="space-y-4">
               {/* Zone A */}
-              <div className="flex items-start gap-3.5 p-2 rounded-xl hover:bg-[#F7F9F5] transition-colors">
-                <div className="w-10 h-10 rounded-full bg-[#E3EBD8] text-[#2D5A3F] flex items-center justify-center text-base shrink-0 font-bold">
+              <div className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-[#DCFCE7] dark:bg-emerald-950 text-[#166534] dark:text-emerald-300 flex items-center justify-center text-base shrink-0 font-bold">
                   📅
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-[#1A2E22]">Zone A – Scheduled</div>
-                  <div className="text-xs text-[#5C6B61] mt-0.5">Today, 2 PM</div>
+                  <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Zone A – Scheduled</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Today, 2 PM</div>
                 </div>
               </div>
 
               {/* Zone B */}
-              <div className="flex items-start gap-3.5 p-2 rounded-xl hover:bg-[#F7F9F5] transition-colors">
-                <div className="w-10 h-10 rounded-full bg-[#F4E8D3] text-[#8B6D4C] flex items-center justify-center text-base shrink-0 font-bold">
+              <div className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-[#FEF3C7] dark:bg-amber-950 text-[#92400E] dark:text-amber-300 flex items-center justify-center text-base shrink-0 font-bold">
                   🚚
                 </div>
                 <div className="flex-1">
-                  <div className="text-sm font-bold text-[#1A2E22]">Zone B – In Progress</div>
-                  <div className="w-full bg-[#E5E8E0] h-1.5 rounded-full mt-2 overflow-hidden">
-                    <div className="bg-[#8B6D4C] h-full w-2/3 rounded-full" />
+                  <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Zone B – In Progress</div>
+                  <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                    <div className="bg-[#854D0E] dark:bg-amber-500 h-full w-2/3 rounded-full" />
                   </div>
                 </div>
               </div>
 
               {/* Zone C */}
-              <div className="flex items-start gap-3.5 p-2 rounded-xl hover:bg-[#F7F9F5] transition-colors">
-                <div className="w-10 h-10 rounded-full bg-[#E5E8E0] text-[#5C6B61] flex items-center justify-center text-base shrink-0 font-bold">
+              <div className="flex items-start gap-3.5 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors">
+                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center text-base shrink-0 font-bold">
                   ✓
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-[#1A2E22]">Zone C – Completed</div>
-                  <div className="text-xs text-[#5C6B61] mt-0.5">Processed 8.2 tons</div>
+                  <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Zone C – Completed</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Processed 8.2 tons</div>
                 </div>
               </div>
             </div>

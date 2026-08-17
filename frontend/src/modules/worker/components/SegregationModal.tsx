@@ -260,7 +260,7 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
                             : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                         }`}
                       >
-                        {result.verdict === 'PASSED' ? '✓ Segregation Verified' : result.verdict === 'WARNING' ? '⚠️ Minor Contamination' : '✕ Unsegregated'}
+                        {result.verdict === 'PASSED' ? 'o Segregation Verified' : result.verdict === 'WARNING' ? '⚠️ Minor Contamination' : '✕ Unsegregated'}
                       </span>
                       <span className="text-[11px] font-mono text-slate-400">
                         Conf: {(result.ai_confidence * 100).toFixed(1)}%
@@ -311,7 +311,7 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
                   <div className="flex flex-wrap gap-1">
                     {result.detected_items.map((item, i) => (
                       <span key={i} className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px]">
-                        ✓ {item}
+                        o {item}
                       </span>
                     ))}
                   </div>

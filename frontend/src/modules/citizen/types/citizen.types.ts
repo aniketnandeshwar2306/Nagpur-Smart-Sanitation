@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Citizen Module — TypeScript Interfaces
+// Citizen Module - TypeScript Interfaces
 // Mirrors the Pydantic models in backend/routers/citizen.py
 // ---------------------------------------------------------------------------
 

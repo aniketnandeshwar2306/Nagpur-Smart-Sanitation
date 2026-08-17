@@ -177,7 +177,7 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
               ))}
             </select>
             <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs opacity-60">
-              ▼
+              -
             </div>
           </div>
         </div>

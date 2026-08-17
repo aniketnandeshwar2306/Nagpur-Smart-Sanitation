@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Citizen Module — API Helpers with Mock Data Fallback
+// Citizen Module - API Helpers with Mock Data Fallback
 // When backend (localhost:8000) is unavailable, returns realistic mock data.
 // ---------------------------------------------------------------------------
 

@@ -32,11 +32,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="px-5 py-2.5 rounded-full border border-[#D0D7CA] bg-[#EBF0E6] text-[#1A2E22] font-semibold text-sm hover:bg-[#DFE8D8] transition-all flex items-center gap-2 shadow-xs">
+          <button className="px-5 py-2.5 rounded-full border border-slate-300 dark:border-slate-700 bg-[#F1F5F9] dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 shadow-xs cursor-pointer">
             <span>📤</span>
             <span>Export PDF</span>
           </button>
-          <button className="px-5 py-2.5 rounded-full bg-[#2D5A3F] text-white font-semibold text-sm hover:bg-[#21432E] transition-all flex items-center gap-2 shadow-sm">
+          <button className="px-5 py-2.5 rounded-full bg-[#1E3E2B] dark:bg-emerald-600 text-white font-semibold text-sm hover:bg-[#142B1E] dark:hover:bg-emerald-500 transition-all flex items-center gap-2 shadow-sm cursor-pointer">
             <span>Generate Insights</span>
           </button>
         </div>
@@ -259,39 +259,39 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ onNavigate }) => {
 
             <div className="space-y-3.5">
               {/* Insight 1 */}
-              <div className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-[#F5F5F0] transition-colors">
-                <div className="w-8 h-8 rounded-full bg-[#F4E8D3] text-[#8B6D4C] flex items-center justify-center text-sm shrink-0 font-bold">
+              <div className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-[#FEF3C7] dark:bg-amber-950 text-[#92400E] dark:text-amber-300 flex items-center justify-center text-sm shrink-0 font-bold">
                   🌾
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-[#1A2E22]">Compost Contamination Down</div>
-                  <div className="text-[11px] text-[#5C6B61] mt-0.5 line-clamp-1">
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-100">Compost Contamination Down</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
                     Educational outreach in Zone B reduced non-compostable intake.
                   </div>
                 </div>
               </div>
 
               {/* Insight 2 */}
-              <div className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-[#F5F5F0] transition-colors">
-                <div className="w-8 h-8 rounded-full bg-[#E3EBD8] text-[#2D5A3F] flex items-center justify-center text-sm shrink-0 font-bold">
+              <div className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-[#DCFCE7] dark:bg-emerald-950 text-[#166534] dark:text-emerald-300 flex items-center justify-center text-sm shrink-0 font-bold">
                   🚚
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-[#1A2E22]">Route Optimization Alpha</div>
-                  <div className="text-[11px] text-[#5C6B61] mt-0.5 line-clamp-1">
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-100">Route Optimization Alpha</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
                     New algorithm saved 450 liters of fuel across fleet.
                   </div>
                 </div>
               </div>
 
               {/* Insight 3 */}
-              <div className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-[#F5F5F0] transition-colors">
-                <div className="w-8 h-8 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-sm shrink-0 font-bold">
+              <div className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors">
+                <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 flex items-center justify-center text-sm shrink-0 font-bold">
                   ⚠️
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-[#1A2E22]">Landfill Capacity Alert</div>
-                  <div className="text-[11px] text-[#5C6B61] mt-0.5 line-clamp-1">
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-100">Landfill Capacity Alert</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
                     Sector 7 transfer station nearing 90% capacity.
                   </div>
                 </div>

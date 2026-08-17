@@ -70,7 +70,7 @@ export const DailyTasksList: React.FC<DailyTasksListProps> = ({
       case 'COMPLETED':
         return (
           <span className="px-2.5 py-1 rounded-lg text-xs font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-            ✓ {language === 'mr' ? 'पूर्ण' : 'Completed'}
+            o {language === 'mr' ? 'पूर्ण' : 'Completed'}
           </span>
         );
       case 'IN_PROGRESS':
@@ -287,7 +287,7 @@ export const DailyTasksList: React.FC<DailyTasksListProps> = ({
                           onClick={() => onStatusChange(task.id, 'COMPLETED')}
                           className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md active:scale-95 transition-all"
                         >
-                          ✓ Mark Done
+                          o Mark Done
                         </button>
                       ) : (
                         <button
@@ -299,7 +299,7 @@ export const DailyTasksList: React.FC<DailyTasksListProps> = ({
                       )
                     ) : (
                       <span className="text-xs text-emerald-400 font-bold px-2 py-1">
-                        ✓ Done at {task.completed_at ? new Date(task.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '07:10 AM'}
+                        o Done at {task.completed_at ? new Date(task.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '07:10 AM'}
                       </span>
                     )}
                   </div>

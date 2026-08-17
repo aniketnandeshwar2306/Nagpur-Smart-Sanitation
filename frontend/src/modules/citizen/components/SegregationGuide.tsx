@@ -72,8 +72,8 @@ const SegregationGuide: React.FC = () => {
   return (
     <div className="citizen-fade-in space-y-6 max-w-6xl mx-auto pb-6">
       <div>
-        <h2 className="text-2xl font-bold text-[#1A2E22] dark:text-white">♻️ Waste Segregation Guide &amp; Quiz</h2>
-        <p className="text-[#5C6B61] dark:text-slate-300 text-sm mt-1">Proper segregation ensures effective municipal recycling across Nagpur.</p>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">♻️ Waste Segregation Guide &amp; Quiz</h2>
+        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">Proper segregation ensures effective municipal recycling across Nagpur.</p>
       </div>
 
       {/* Sub-nav */}
@@ -82,9 +82,9 @@ const SegregationGuide: React.FC = () => {
           <button
             key={tab}
             onClick={() => setActiveView(tab)}
-            className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all capitalize ${
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all capitalize cursor-pointer ${
               activeView === tab
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -104,7 +104,7 @@ const SegregationGuide: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-green-500/20 border border-green-500/30 flex items-center justify-center text-xl">🟢</div>
                   <div>
-                    <h3 className="font-extrabold text-green-400 text-lg">Wet Waste (Biodegradable)</h3>
+                    <h3 className="font-extrabold text-emerald-400 text-lg">Wet Waste (Biodegradable)</h3>
                     <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Dispose in Green Bin</div>
                   </div>
                 </div>
@@ -115,8 +115,8 @@ const SegregationGuide: React.FC = () => {
                     <div key={item.name} className="bg-slate-950/60 border border-green-500/20 rounded-2xl p-3.5 flex items-center gap-3 group citizen-card-lift">
                       <span className="text-2xl">{item.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-[#1A2E22] dark:text-white">{item.name}</div>
-                        <div className="text-[11px] text-slate-400 group-hover:text-green-300 transition-colors">{item.tip}</div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.name}</div>
+                        <div className="text-[11px] text-slate-400 group-hover:text-emerald-300 transition-colors">{item.tip}</div>
                       </div>
                     </div>
                   ))}
@@ -130,7 +130,7 @@ const SegregationGuide: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xl">🔵</div>
                   <div>
-                    <h3 className="font-extrabold text-amber-400 text-lg">Dry Waste (Recyclable)</h3>
+                    <h3 className="font-extrabold text-amber-300 text-lg">Dry Waste (Recyclable)</h3>
                     <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Dispose in Blue Bin</div>
                   </div>
                 </div>
@@ -141,7 +141,7 @@ const SegregationGuide: React.FC = () => {
                     <div key={item.name} className="bg-slate-950/60 border border-amber-500/20 rounded-2xl p-3.5 flex items-center gap-3 group citizen-card-lift">
                       <span className="text-2xl">{item.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-[#1A2E22] dark:text-white">{item.name}</div>
+                        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.name}</div>
                         <div className="text-[11px] text-slate-400 group-hover:text-amber-300 transition-colors">{item.tip}</div>
                       </div>
                     </div>

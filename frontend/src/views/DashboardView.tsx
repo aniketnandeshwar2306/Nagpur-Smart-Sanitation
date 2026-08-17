@@ -25,14 +25,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => onNavigate?.('reports')}
-            className="px-5 py-2.5 rounded-full border border-[#D0D7CA] bg-[#EBF0E6] text-[#1A2E22] font-semibold text-sm hover:bg-[#DFE8D8] transition-all flex items-center gap-2 shadow-xs"
+            className="px-5 py-2.5 rounded-full border border-slate-300 dark:border-slate-700 bg-[#F1F5F9] dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 shadow-xs cursor-pointer"
           >
             <span>📊</span>
             <span>View Reports</span>
           </button>
           <button
             onClick={() => onNavigate?.('citizen')}
-            className="px-5 py-2.5 rounded-full bg-[#655543] text-white font-semibold text-sm hover:bg-[#524434] transition-all flex items-center gap-2 shadow-sm"
+            className="px-5 py-2.5 rounded-full border border-transparent dark:border-slate-700 bg-[#1E3E2B] dark:bg-slate-800 text-white dark:text-slate-100 font-semibold text-sm hover:bg-[#142B1E] dark:hover:bg-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
           >
             <span>🎧</span>
             <span>Contact Support</span>
@@ -192,7 +192,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
 
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#F5F5F0] text-[#5C6B61] flex items-center justify-center font-bold">
-                ✓
+                o
               </div>
               <div>
                 <div className="text-sm font-bold text-[#1A2E22]">Zone C – East</div>

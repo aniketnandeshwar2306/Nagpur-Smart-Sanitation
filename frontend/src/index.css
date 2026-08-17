@@ -2,20 +2,20 @@
 
 @layer base {
   :root {
-    --eco-bg: #F5F5F0;
+    --eco-bg: #F8FAFC;
     --eco-card: #FFFFFF;
-    --eco-border: #E5E8E0;
-    --eco-forest: #2D5A3F;
-    --eco-forest-dark: #21432E;
-    --eco-forest-soft: #E3EBD8;
-    --eco-sage: #C8E8CD;
-    --eco-sage-dark: #1F402B;
-    --eco-tan: #8B6D4C;
-    --eco-tan-light: #F4E8D3;
-    --eco-charcoal: #1A2E22;
-    --eco-muted: #5C6B61;
-    --eco-text-main: #1A2E22;
-    --eco-text-sub: #5C6B61;
+    --eco-border: #E2E8F0;
+    --eco-forest: #1E3E2B;
+    --eco-forest-dark: #142B1E;
+    --eco-forest-soft: #DCFCE7;
+    --eco-sage: #BBF7D0;
+    --eco-sage-dark: #166534;
+    --eco-tan: #854D0E;
+    --eco-tan-light: #FEF3C7;
+    --eco-charcoal: #0F172A;
+    --eco-muted: #475569;
+    --eco-text-main: #0F172A;
+    --eco-text-sub: #475569;
   }
 
   .dark {
@@ -30,13 +30,14 @@
 
   body {
     margin: 0;
-    font-size: 16px;
-    background-color: #F5F5F0;
-    color: #1A2E22;
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 15px;
+    background-color: #F8FAFC;
+    color: #1E293B;
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
-    line-height: 1.6;
-    transition: background-color 0.3s ease, color 0.3s ease;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.55;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 
   .dark body, body.dark {
@@ -44,14 +45,15 @@
     color: #F8FAFC;
   }
 
-  h1, h2, h3, h4, h5, h6, .font-serif-heading {
-    font-family: 'Playfair Display', Georgia, serif;
-    letter-spacing: -0.01em;
+  h1, h2, h3, h4, h5, h6, .font-serif, .font-serif-heading {
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
+    letter-spacing: -0.02em;
     line-height: 1.25;
-    color: #1A2E22;
+    color: #0F172A;
+    font-weight: 700;
   }
 
-  /* Universal Light Mode Heading & Subtitle Enforcement */
+  /* Universal Light Mode Typography Contrast Adjustments */
   html:not(.dark) h1:not(.text-white-forced),
   html:not(.dark) h2:not(.text-white-forced),
   html:not(.dark) h3:not(.text-white-forced),
@@ -60,7 +62,7 @@
   body:not(.dark) h2:not(.text-white-forced),
   body:not(.dark) h3:not(.text-white-forced),
   body:not(.dark) h4:not(.text-white-forced) {
-    color: #1A2E22 !important;
+    color: #0F172A !important;
   }
 
   html:not(.dark) h1 + p,
@@ -69,10 +71,15 @@
   body:not(.dark) h1 + p,
   body:not(.dark) h2 + p,
   body:not(.dark) h3 + p {
-    color: #334155 !important; /* Dark Slate 700 for high visibility */
+    color: #475569 !important; /* Soft, balanced slate for light mode reading */
   }
 
-  /* Exceptions for explicit dark card containers in Light Mode */
+  /* Light mode paragraph and label colors */
+  html:not(.dark) p {
+    color: #334155;
+  }
+
+  /* Exceptions for explicit dark badge/card containers in Light Mode */
   html:not(.dark) .bg-slate-900 h1,
   html:not(.dark) .bg-slate-900 h2,
   html:not(.dark) .bg-slate-900 h3,
@@ -95,76 +102,100 @@
 
   .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6,
   body.dark h1, body.dark h2, body.dark h3, body.dark h4, body.dark h5, body.dark h6 {
-    color: #FFFFFF !important;
+    color: #E2E8F0 !important; /* Soft soothing slate, no harsh white glare */
   }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────────
-   CRITICAL FONT COLOR & CONTRAST OVERRIDES FOR HIGH VISIBILITY IN DARK MODE
+   DARK & LIGHT MODE METRICS & CONTRAST (BALANCED READABILITY)
    ────────────────────────────────────────────────────────────────────────────── */
 
-/* Dark Mode Overrides for Hardcoded Dark Colors -> Convert to Bright Visible Colors */
 .dark [class*="text-\[\#1A2E22\]"], body.dark [class*="text-\[\#1A2E22\]"] {
-  color: #FFFFFF !important;
+  color: #E2E8F0 !important;
 }
 
 .dark [class*="text-\[\#2D5A3F\]"], body.dark [class*="text-\[\#2D5A3F\]"] {
-  color: #4ADE80 !important; /* Bright neon emerald green */
+  color: #34D399 !important; /* Softer, calm emerald green */
 }
 
 .dark [class*="text-\[\#5C6B61\]"], body.dark [class*="text-\[\#5C6B61\]"] {
-  color: #CBD5E1 !important; /* Light slate text */
+  color: #94A3B8 !important; /* Soft muted slate in dark mode */
 }
 
 .dark [class*="text-\[\#8B6D4C\]"], body.dark [class*="text-\[\#8B6D4C\]"] {
-  color: #FDE047 !important; /* Bright yellow for dark mode */
+  color: #FBBF24 !important; /* Soft warm amber for dark mode */
 }
 
 .dark [class*="text-\[\#1F402B\]"], body.dark [class*="text-\[\#1F402B\]"] {
-  color: #86EFAC !important;
+  color: #A7F3D0 !important;
+}
+
+/* Soft, readable numbers across all dark mode pages */
+.dark .text-2xl:not([class*="text-emerald-"]):not([class*="text-amber-"]):not([class*="text-sky-"]):not([class*="text-rose-"]):not([class*="text-green-"]):not([class*="text-cyan-"]):not([class*="text-slate-"]),
+.dark .text-3xl:not([class*="text-emerald-"]):not([class*="text-amber-"]):not([class*="text-sky-"]):not([class*="text-rose-"]):not([class*="text-green-"]):not([class*="text-cyan-"]):not([class*="text-slate-"]),
+.dark .text-4xl:not([class*="text-emerald-"]):not([class*="text-amber-"]):not([class*="text-sky-"]):not([class*="text-rose-"]):not([class*="text-green-"]):not([class*="text-cyan-"]):not([class*="text-slate-"]),
+.dark .text-5xl:not([class*="text-emerald-"]):not([class*="text-amber-"]):not([class*="text-sky-"]):not([class*="text-rose-"]):not([class*="text-green-"]):not([class*="text-cyan-"]):not([class*="text-slate-"]) {
+  color: #E2E8F0;
+}
+
+/* Fix for dark mode hover turning background white */
+.dark [class*="hover:bg-\[#F"], body.dark [class*="hover:bg-\[#F"],
+.dark [class*="hover:bg-\[#E"], body.dark [class*="hover:bg-\[#E"],
+.dark [class*="hover:bg-\[#D"], body.dark [class*="hover:bg-\[#D"],
+.dark [class*="hover:bg-white"], body.dark [class*="hover:bg-white"] {
+  background-color: #1E293B !important;
+  color: #E2E8F0 !important;
+}
+
+.dark [class*="hover:bg-\[#F"] *, body.dark [class*="hover:bg-\[#F"] *,
+.dark [class*="hover:bg-\[#E"] *, body.dark [class*="hover:bg-\[#E"] *,
+.dark [class*="hover:bg-\[#D"] *, body.dark [class*="hover:bg-\[#D"] *,
+.dark [class*="hover:bg-white"] * {
+  color: #E2E8F0 !important;
 }
 
 /* Card Styling */
 .eco-card {
-  background-color: #ffffff;
-  border: 1px solid #E5E8E0;
-  border-radius: 1.5rem;
-  box-shadow: 0 4px 24px -2px rgba(26, 46, 34, 0.04), 0 2px 8px -1px rgba(0, 0, 0, 0.02);
-  transition: all 0.25s ease-in-out;
+  background-color: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease-in-out;
 }
 
 .dark .eco-card, body.dark .eco-card {
   background-color: #152232 !important;
   border-color: #233549 !important;
-  color: #F8FAFC !important;
-  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.4) !important;
+  color: #E2E8F0 !important;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4) !important;
 }
 
 .dark .eco-card h1, .dark .eco-card h2, .dark .eco-card h3, .dark .eco-card h4,
 body.dark .eco-card h1, body.dark .eco-card h2, body.dark .eco-card h3, body.dark .eco-card h4 {
-  color: #FFFFFF !important;
+  color: #E2E8F0 !important;
 }
 
 .dark .eco-card p, body.dark .eco-card p {
-  color: #CBD5E1 !important;
+  color: #94A3B8 !important;
 }
 
 .eco-card:hover {
-  box-shadow: 0 8px 32px -4px rgba(26, 46, 34, 0.07), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1.5px);
 }
 
 .dark .eco-card:hover, body.dark .eco-card:hover {
-  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 8px 28px -4px rgba(0, 0, 0, 0.6) !important;
 }
 
 /* Buttons */
 .eco-button-primary {
-  background-color: #2D5A3F;
-  color: #ffffff;
+  background-color: #1E3E2B;
+  color: #FFFFFF;
   font-weight: 700;
+  font-size: 0.875rem;
   border-radius: 9999px;
-  padding: 0.625rem 1.35rem;
+  padding: 0.55rem 1.25rem;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -178,20 +209,22 @@ body.dark .eco-card h1, body.dark .eco-card h2, body.dark .eco-card h3, body.dar
 }
 
 .eco-button-primary:hover {
-  background-color: #21432E;
+  background-color: #142B1E;
   transform: translateY(-1px);
 }
 
 .eco-button-secondary {
-  background-color: #EBF0E6;
-  color: #1A2E22;
+  background-color: #F1F5F9;
+  color: #1E293B;
   font-weight: 600;
+  font-size: 0.875rem;
   border-radius: 9999px;
-  padding: 0.625rem 1.35rem;
+  padding: 0.55rem 1.25rem;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  border: 1px solid #E2E8F0;
 }
 
 .dark .eco-button-secondary, body.dark .eco-button-secondary {
@@ -201,20 +234,38 @@ body.dark .eco-card h1, body.dark .eco-card h2, body.dark .eco-card h3, body.dar
 }
 
 .eco-button-secondary:hover {
-  background-color: #DFE8D8;
+  background-color: #E2E8F0;
 }
 
 .dark .eco-button-secondary:hover, body.dark .eco-button-secondary:hover {
   background-color: #334155 !important;
 }
 
+/* Contact Support button & Dark Mode Support styling */
+.contact-support-btn {
+  background-color: #FFFFFF;
+  color: #0F172A;
+  border: 1px solid #CBD5E1;
+}
+
+.dark .contact-support-btn, body.dark .contact-support-btn {
+  background-color: #1E293B !important;
+  border-color: #334155 !important;
+  color: #F8FAFC !important;
+}
+
+.dark .contact-support-btn:hover, body.dark .contact-support-btn:hover {
+  background-color: #334155 !important;
+  border-color: #475569 !important;
+}
+
 /* Badges */
 .eco-badge-green {
-  background-color: #C8E8CD;
-  color: #1F402B;
+  background-color: #DCFCE7;
+  color: #166534;
   font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.3rem 0.8rem;
+  font-weight: 700;
+  padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   display: inline-flex;
   align-items: center;
@@ -228,11 +279,11 @@ body.dark .eco-card h1, body.dark .eco-card h2, body.dark .eco-card h3, body.dar
 }
 
 .eco-badge-tan {
-  background-color: #F4E8D3;
-  color: #8B6D4C;
+  background-color: #FEF3C7;
+  color: #92400E;
   font-size: 0.75rem;
-  font-weight: 800;
-  padding: 0.3rem 0.8rem;
+  font-weight: 700;
+  padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   display: inline-flex;
   align-items: center;
@@ -253,12 +304,12 @@ body.dark .eco-card h1, body.dark .eco-card h2, body.dark .eco-card h3, body.dar
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .eco-animate-fade {
-  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Custom Scrollbar */
@@ -267,7 +318,7 @@ body.dark .eco-card h1, body.dark .eco-card h2, body.dark .eco-card h3, body.dar
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #F5F5F0;
+  background: #F1F5F9;
 }
 .dark ::-webkit-scrollbar-track, body.dark ::-webkit-scrollbar-track {
   background: #0B131E;

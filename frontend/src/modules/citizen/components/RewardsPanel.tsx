@@ -95,11 +95,11 @@ const RewardsPanel: React.FC = () => {
   return (
     <div className="citizen-fade-in space-y-6 max-w-6xl mx-auto pb-6">
       <div>
-        <h2 className="text-2xl font-bold text-[#1A2E22] dark:text-white">🌿 GreenPoints &amp; Gamification</h2>
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">🌿 GreenPoints &amp; Gamification</h2>
         <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">Earn points for waste reports &amp; segregation. Redeem vouchers or check the civic leaderboard.</p>
       </div>
 
-      {/* Hero Card — Points + Tier */}
+      {/* Hero Card - Points + Tier */}
       <div className="citizen-slide-up bg-gradient-to-br from-slate-900 via-slate-900 to-slate-900 border border-emerald-500/20 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-2xl">
         <div className="absolute inset-0 citizen-shimmer opacity-30 rounded-3xl" />
 
@@ -133,7 +133,7 @@ const RewardsPanel: React.FC = () => {
 
             {/* Points + Tier Info */}
             <div>
-              <div className="text-4xl md:text-5xl font-black text-white citizen-count-pulse">
+              <div className="text-4xl md:text-5xl font-bold text-slate-100 citizen-count-pulse tracking-tight">
                 {rewards.total_points.toLocaleString()}
               </div>
               <div className="text-sm text-slate-400 mt-1 font-medium">Total Earned GreenPoints</div>
@@ -143,7 +143,7 @@ const RewardsPanel: React.FC = () => {
                 </span>
                 <span className="text-slate-600">→</span>
                 <span className="text-xs text-slate-400 font-medium">
-                  Next: {nextTierConf.icon} <strong className="text-white">{rewards.next_tier}</strong> ({rewards.points_to_next_tier} pts remaining)
+                  Next: {nextTierConf.icon} <strong className="text-slate-200">{rewards.next_tier}</strong> ({rewards.points_to_next_tier} pts remaining)
                 </span>
               </div>
             </div>
@@ -154,7 +154,7 @@ const RewardsPanel: React.FC = () => {
             <div className="flex items-center gap-3">
               <span className="text-3xl">🔥</span>
               <div>
-                <div className="font-black text-rose-400 text-2xl">{rewards.streak_days} Day Streak</div>
+                <div className="font-bold text-rose-300 text-2xl">{rewards.streak_days} Day Streak</div>
                 <div className="text-xs text-slate-400">Keep reporting waste to retain bonus</div>
               </div>
             </div>
@@ -168,7 +168,7 @@ const RewardsPanel: React.FC = () => {
                       : 'bg-slate-800 text-slate-600 border border-slate-700/50'}
                   `}
                 >
-                  {i < rewards.streak_days ? '✓' : ''}
+                  {i < rewards.streak_days ? 'o' : ''}
                 </div>
               ))}
             </div>

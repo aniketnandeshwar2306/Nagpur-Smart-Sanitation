@@ -156,7 +156,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   }}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md"
                 >
-                  ✓ {language === 'mr' ? 'पूर्ण करा' : 'Complete'}
+                  o {language === 'mr' ? 'पूर्ण करा' : 'Complete'}
                 </button>
               ) : (
                 <span className="text-emerald-400 font-bold px-2 py-1">Completed</span>

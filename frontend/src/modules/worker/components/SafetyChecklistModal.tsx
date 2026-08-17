@@ -175,7 +175,7 @@ export const SafetyChecklistModal: React.FC<SafetyChecklistModalProps> = ({
                   : 'bg-slate-800 text-slate-500 cursor-not-allowed'
               }`}
             >
-              <span>{confirmed ? '✓ Safety Protocol Confirmed!' : 'Confirm Daily Safety Readiness'}</span>
+              <span>{confirmed ? 'o Safety Protocol Confirmed!' : 'Confirm Daily Safety Readiness'}</span>
             </button>
           </div>
         </div>

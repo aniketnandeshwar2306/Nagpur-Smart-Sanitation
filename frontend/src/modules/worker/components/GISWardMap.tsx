@@ -234,7 +234,7 @@ export const GISWardMap: React.FC<GISWardMapProps> = ({
             <div class="w-8 h-8 rounded-full ${markerColor} text-white font-bold text-xs flex items-center justify-center shadow-2xl ring-2 ${
           isSelected ? 'ring-4 ring-amber-400 scale-125' : ''
         } transition-transform">
-              ${isCompleted ? '✓' : isCritical ? '!' : '🗑️'}
+              ${isCompleted ? 'o' : isCritical ? '!' : '🗑️'}
             </div>
             ${
               isCritical

@@ -120,10 +120,10 @@ export const WeatherAlertBanner: React.FC<WeatherAlertBannerProps> = ({
                 <div className="flex items-center gap-2 flex-wrap">
                   {getSeverityBadge()}
                   <span className="text-[11px] font-mono text-slate-300">
-                    IMD Nagpur • {currentAlert.temperature_celsius}°C
+                    IMD Nagpur • {currentAlert.temperature_celsius}C
                   </span>
                   <span className="text-[11px] text-amber-400 font-semibold">
-                    (Feels {currentAlert.feels_like_celsius}°C)
+                    (Feels {currentAlert.feels_like_celsius}C)
                   </span>
                 </div>
                 <h3 className="font-bold text-slate-100 text-sm mt-0.5 leading-snug">
@@ -236,7 +236,7 @@ export const WeatherAlertBanner: React.FC<WeatherAlertBannerProps> = ({
                         key={idx}
                         className="px-2 py-1 rounded bg-slate-800 text-slate-200 border border-slate-700 text-[11px] font-medium"
                       >
-                        ✓ {gear}
+                        o {gear}
                       </span>
                     ))}
                   </div>

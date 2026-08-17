@@ -117,7 +117,7 @@ export const RoleSelectionView: React.FC<RoleSelectionViewProps> = ({
               ))}
             </select>
             <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs opacity-60">
-              ▼
+              -
             </div>
           </div>
         </div>
@@ -147,27 +147,27 @@ export const RoleSelectionView: React.FC<RoleSelectionViewProps> = ({
             >
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div className="w-14 h-14 rounded-2xl bg-white/90 border border-white/60 shadow-md flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                  <div className="w-14 h-14 rounded-2xl bg-white/90 dark:bg-slate-800/90 border border-white/60 dark:border-slate-700 shadow-md flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
                     {r.icon}
                   </div>
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/80 border border-white/60 text-[#1A2E22] shadow-xs">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800 border border-white/60 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-xs">
                     {r.badge}
                   </span>
                 </div>
 
                 <div>
-                  <h2 className="text-2xl font-serif font-bold text-[#1A2E22] group-hover:text-[#2D5A3F] transition-colors">
+                  <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                     {r.titleKey}
                   </h2>
-                  <p className="text-sm text-[#5C6B61] mt-2 leading-relaxed font-medium">
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed font-normal">
                     {r.descKey}
                   </p>
                 </div>
 
-                <div className="border-t border-[#E5E8E0]/80 pt-4 space-y-2">
+                <div className="border-t border-slate-200 dark:border-slate-800 pt-4 space-y-2">
                   {r.features.map((f, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs font-semibold text-[#1A2E22]">
-                      <span className="text-[#2D5A3F]">✓</span>
+                    <div key={i} className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      <span className="text-emerald-600 dark:text-emerald-400">✓</span>
                       <span>{f}</span>
                     </div>
                   ))}

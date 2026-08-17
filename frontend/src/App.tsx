@@ -14,10 +14,12 @@ import AdminDashboard from './modules/admin/AdminDashboard';
 import CitizenDashboard from './modules/citizen/CitizenDashboard';
 import WorkerDashboard from './modules/worker/WorkerDashboard';
 import { INDIAN_LANGUAGES } from './utils/languages';
+import { LanguageProvider, useLanguage, type Language } from './context/LanguageContext';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setLanguage } = useLanguage();
 
   // Always force Role Selection screen at starting route '/' or when role is not set
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(() => {
@@ -55,7 +57,9 @@ const AppContent: React.FC = () => {
   // Persist language selection
   const handleLanguageChange = (lang: string) => {
     setCurrentLang(lang);
+    setLanguage(lang as Language);
     localStorage.setItem('nagpur_clean_lang', lang);
+    localStorage.setItem('nss_language', lang);
   };
 
   // Select Role Action
@@ -224,9 +228,11 @@ const AppContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <BrowserRouter>
-      <AppContent />
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </LanguageProvider>
   );
 };
 

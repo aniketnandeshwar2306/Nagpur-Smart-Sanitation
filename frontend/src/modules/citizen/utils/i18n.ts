@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Citizen Module — i18n Internationalization Dictionary
+// Citizen Module - i18n Internationalization Dictionary
 // Languages: English ('en'), Marathi ('mr'), Hindi ('hi')
 // ---------------------------------------------------------------------------
 
