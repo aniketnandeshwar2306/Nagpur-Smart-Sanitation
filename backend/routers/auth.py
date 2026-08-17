@@ -173,6 +173,7 @@ def admin_login(payload: LoginRequest, db=Depends(get_db)):
     return unified_login(payload, db)
 
 
+@router.post("/register", response_model=AuthResponse)
 @router.post("/citizen/register", response_model=AuthResponse)
 def citizen_register(payload: CitizenRegisterRequest, db=Depends(get_db)):
     """Citizen self-registration endpoint storing user document in MongoDB."""
