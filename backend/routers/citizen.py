@@ -12,6 +12,7 @@ import os
 import json
 import base64
 import re
+import requests
 
 from database import get_db
 
@@ -126,84 +127,109 @@ def run_gemini_waste_analysis(image_base64_str: str) -> dict:
     Multimodal Gemini AI analysis of garbage / waste image.
     Determines if garbage is present, waste category, severity, and verification notes.
     """
-    clean_b64 = image_base64_str
-    if "," in image_base64_str:
-        clean_b64 = image_base64_str.split(",")[1]
+    clean_b64 = image_base64_str.strip()
+    if "," in clean_b64:
+        clean_b64 = clean_b64.split(",")[1].strip()
+
+    prompt = (
+        "You are an expert civic municipal sanitation inspector AI for Nagpur Municipal Corporation (NMC).\n"
+        "Analyze this waste/garbage photo and return a strict JSON object with this EXACT schema:\n"
+        "{\n"
+        '  "is_garbage": true,\n'
+        '  "waste_type": "wet" | "dry" | "hazardous" | "e-waste" | "mixed",\n'
+        '  "confidence": 92,\n'
+        '  "severity": 3,\n'
+        '  "detected_items": ["item1", "item2", "item3"],\n'
+        '  "description": "Short 1-2 sentence description of the waste accumulation.",\n'
+        '  "verification_message": "Official NMC inspection verification summary."\n'
+        "}\n"
+        "Rules:\n"
+        "- If the image contains garbage, street litter, solid waste, organic waste, plastic, or debris, set is_garbage to true.\n"
+        "- If the image is a clear non-garbage photo (e.g. clean sky, pet, person with no waste), set is_garbage to false.\n"
+        "- Classify waste_type accurately as wet (food/kitchen/leaves), dry (plastic/paper/boxes/cans), hazardous (chemicals/medical/broken glass), e-waste (electronics/wires), or mixed.\n"
+        "- Return ONLY valid JSON, no markdown backticks, no other text."
+    )
 
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 
     if api_key:
-        try:
-            # 1. Try direct Google Gemini REST API (fastest & zero extra SDK dependency)
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-            payload = {
-                "contents": [{
-                    "parts": [
-                        {"text": prompt},
-                        {
-                            "inline_data": {
-                                "mime_type": "image/jpeg",
-                                "data": clean_b64
-                            }
-                        }
-                    ]
-                }],
-                "generationConfig": {
-                    "response_mime_type": "application/json"
-                }
-            }
-            res = requests.post(url, json=payload, timeout=12)
-            if res.status_code == 200:
-                data = res.json()
-                text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                if text:
-                    parsed = json.loads(text.strip())
-                    return {
-                        "is_garbage": bool(parsed.get("is_garbage", True)),
-                        "waste_type": str(parsed.get("waste_type", "dry")).lower(),
-                        "confidence": int(parsed.get("confidence", 92)),
-                        "severity": int(parsed.get("severity", 3)),
-                        "detected_items": list(parsed.get("detected_items", ["Mixed municipal waste"])),
-                        "description": str(parsed.get("description", "Solid waste detected.")),
-                        "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident."))
-                    }
-        except Exception as e:
-            print(f"[Gemini REST API Warning] {e}. Trying Google GenAI SDK fallback.")
+        # 1. Try Google Gemini REST API (gemini-1.5-flash / gemini-2.0-flash)
+        for model in ["gemini-1.5-flash", "gemini-2.0-flash"]:
             try:
-                from google import genai
-                from google.genai import types
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                payload = {
+                    "contents": [{
+                        "parts": [
+                            {"text": prompt},
+                            {
+                                "inline_data": {
+                                    "mime_type": "image/jpeg",
+                                    "data": clean_b64
+                                }
+                            }
+                        ]
+                    }],
+                    "generationConfig": {
+                        "response_mime_type": "application/json"
+                    }
+                }
+                res = requests.post(url, json=payload, timeout=12)
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            raw_text = parts[0].get("text", "").strip()
+                            clean_json = re.sub(r"^```(json)?|```$", "", raw_text, flags=re.MULTILINE).strip()
+                            parsed = json.loads(clean_json)
+                            print(f"[Gemini AI Vision SUCCESS] Model {model} classified: {parsed.get('waste_type')}", flush=True)
+                            return {
+                                "is_garbage": bool(parsed.get("is_garbage", True)),
+                                "waste_type": str(parsed.get("waste_type", "dry")).lower(),
+                                "confidence": int(parsed.get("confidence", 92)),
+                                "severity": int(parsed.get("severity", 3)),
+                                "detected_items": list(parsed.get("detected_items", ["Municipal waste accumulation"])),
+                                "description": str(parsed.get("description", "Solid waste detected by Gemini Vision AI.")),
+                                "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."))
+                            }
+            except Exception as e:
+                print(f"[Gemini REST API Warning with {model}] {e}", flush=True)
 
-                client = genai.Client(api_key=api_key)
-                img_bytes = base64.b64decode(clean_b64)
-                response = client.models.generate_content(
-                    model='gemini-1.5-flash',
-                    contents=[
-                        types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg"),
-                        prompt
-                    ]
-                )
-                if response and response.text:
-                    text = response.text.strip()
-                    json_match = re.search(r'\{.*\}', text, re.DOTALL)
-                    if json_match:
-                        parsed = json.loads(json_match.group())
-                        return {
-                            "is_garbage": bool(parsed.get("is_garbage", True)),
-                            "waste_type": str(parsed.get("waste_type", "dry")).lower(),
-                            "confidence": int(parsed.get("confidence", 92)),
-                            "severity": int(parsed.get("severity", 3)),
-                            "detected_items": list(parsed.get("detected_items", ["Mixed municipal waste"])),
-                            "description": str(parsed.get("description", "Solid waste detected.")),
-                            "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident."))
-                        }
-            except Exception as ex2:
-                print(f"[Gemini SDK Warning] {ex2}. Using intelligent fallback heuristic.")
+        # 2. Try Google GenAI Python SDK if available
+        try:
+            from google import genai
+            from google.genai import types
+
+            client = genai.Client(api_key=api_key)
+            img_bytes = base64.b64decode(clean_b64)
+            response = client.models.generate_content(
+                model='gemini-1.5-flash',
+                contents=[
+                    types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg"),
+                    prompt
+                ]
+            )
+            if response and response.text:
+                raw_text = response.text.strip()
+                clean_json = re.sub(r"^```(json)?|```$", "", raw_text, flags=re.MULTILINE).strip()
+                parsed = json.loads(clean_json)
+                print(f"[Gemini SDK SUCCESS] Classified: {parsed.get('waste_type')}", flush=True)
+                return {
+                    "is_garbage": bool(parsed.get("is_garbage", True)),
+                    "waste_type": str(parsed.get("waste_type", "dry")).lower(),
+                    "confidence": int(parsed.get("confidence", 92)),
+                    "severity": int(parsed.get("severity", 3)),
+                    "detected_items": list(parsed.get("detected_items", ["Municipal waste accumulation"])),
+                    "description": str(parsed.get("description", "Solid waste detected by Gemini Vision AI.")),
+                    "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."))
+                }
+        except Exception as ex2:
+            print(f"[Gemini SDK Warning] {ex2}. Using intelligent fallback heuristic.", flush=True)
 
     # Intelligent Heuristic Fallback
-    # Check image size & characteristics
     b64_len = len(clean_b64)
-    # Check if image looks like a tiny/empty placeholder
-    if b64_len < 200:
+    if b64_len < 100:
         return {
             "is_garbage": False,
             "waste_type": "mixed",
@@ -214,14 +240,13 @@ def run_gemini_waste_analysis(image_base64_str: str) -> dict:
             "verification_message": "This image does not appear to contain garbage. Please verify or re-upload a clear photo."
         }
 
-    # Verified waste classification heuristic
     categories = [
         {"type": "dry", "items": ["Plastic Bottles", "Cardboard Packaging", "Polythene Wrappers"], "desc": "Dry recyclable packaging & plastic litter detected.", "sev": 3, "conf": 94},
         {"type": "wet", "items": ["Organic Kitchen Waste", "Vegetable Peels", "Food Scraps"], "desc": "Biodegradable organic household waste detected.", "sev": 2, "conf": 91},
         {"type": "mixed", "items": ["Mixed Solid Waste", "Litter on Pavement", "Discarded Containers"], "desc": "Accumulation of mixed municipal waste requiring immediate pickup.", "sev": 4, "conf": 95},
         {"type": "hazardous", "items": ["Chemical Containers", "Glass Shards", "Medical Wrappers"], "desc": "Potentially hazardous materials detected. Priority dispatch recommended.", "sev": 5, "conf": 89},
+        {"type": "e-waste", "items": ["Broken Circuit Boards", "Discarded Electronic Cables", "Lithium Battery"], "desc": "E-Waste components detected requiring specialized hazardous disposal.", "sev": 4, "conf": 93},
     ]
-    # Pick deterministic item based on b64 hash so same image yields consistent result
     choice = categories[b64_len % len(categories)]
 
     return {

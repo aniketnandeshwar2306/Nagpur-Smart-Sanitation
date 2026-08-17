@@ -151,6 +151,9 @@ const ReportWaste: React.FC = () => {
             : 'dry';
           setWasteType(cat);
           setSeverity(data.severity || 3);
+          if (data.description) {
+            setDescription(prev => prev ? prev : data.description);
+          }
         }
       }
     } catch (e) {
