@@ -24,6 +24,7 @@ router = APIRouter(
 # Models
 class ImageAnalysisRequest(BaseModel):
     image_base64: str
+    api_key: Optional[str] = None
 
 class ImageAnalysisResponse(BaseModel):
     is_garbage: bool
@@ -122,7 +123,7 @@ class SegregationGuide(BaseModel):
     quiz: list[dict]
     tips: list[str]
 
-def run_gemini_waste_analysis(image_base64_str: str) -> dict:
+def run_gemini_waste_analysis(image_base64_str: str, client_api_key: Optional[str] = None) -> dict:
     """
     Multimodal Gemini AI analysis of garbage / waste image.
     Determines if garbage is present, waste category, severity, and verification notes.
@@ -168,7 +169,7 @@ def run_gemini_waste_analysis(image_base64_str: str) -> dict:
         "Return ONLY a valid JSON object matching the schema."
     )
 
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    api_key = client_api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 
     if api_key:
         # 1. Try Google Gemini REST API across multiple models & configurations
@@ -251,42 +252,29 @@ def run_gemini_waste_analysis(image_base64_str: str) -> dict:
         except Exception as ex2:
             print(f"[Gemini SDK Warning] {ex2}", flush=True)
 
-    # Intelligent Heuristic Fallback
-    b64_len = len(clean_b64)
-    if b64_len < 100:
-        return {
-            "is_garbage": False,
-            "waste_type": "mixed",
-            "confidence": 40,
-            "severity": 1,
-            "detected_items": ["Unclear Image Data"],
-            "description": "Image resolution too low or empty.",
-            "verification_message": "This image does not appear to contain garbage. Please verify or re-upload a clear photo."
-        }
-
-    categories = [
-        {"type": "dry", "items": ["Plastic Bottles", "Cardboard Packaging", "Polythene Wrappers"], "desc": "Dry recyclable packaging & plastic litter detected.", "sev": 3, "conf": 94},
-        {"type": "wet", "items": ["Organic Kitchen Waste", "Vegetable Peels", "Food Scraps"], "desc": "Biodegradable organic household waste detected.", "sev": 2, "conf": 91},
-        {"type": "mixed", "items": ["Mixed Solid Waste", "Litter on Pavement", "Discarded Containers"], "desc": "Accumulation of mixed municipal waste requiring immediate pickup.", "sev": 4, "conf": 95},
-        {"type": "hazardous", "items": ["Chemical Containers", "Glass Shards", "Medical Wrappers"], "desc": "Potentially hazardous materials detected. Priority dispatch recommended.", "sev": 5, "conf": 89},
-        {"type": "e-waste", "items": ["Broken Circuit Boards", "Discarded Electronic Cables", "Lithium Battery"], "desc": "E-Waste components detected requiring specialized hazardous disposal.", "sev": 4, "conf": 93},
-    ]
-    choice = categories[b64_len % len(categories)]
-
+    # Safe Default when API key is not configured on server
     return {
-        "is_garbage": True,
-        "waste_type": choice["type"],
-        "confidence": choice["conf"],
-        "severity": choice["sev"],
-        "detected_items": choice["items"],
-        "description": choice["desc"],
-        "verification_message": "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."
+        "is_garbage": False,
+        "waste_type": "none",
+        "confidence": 75,
+        "severity": 1,
+        "detected_items": ["Manual Verification Required"],
+        "description": "Image uploaded. Please select the appropriate waste category below.",
+        "verification_message": "AI Vision analysis requires GEMINI_API_KEY. Please select the waste category and severity below manually."
     }
 
 # Routes
 @router.get("/")
 def get_citizen_status():
     """Health check for the citizen module."""
+    return {"status": "success", "message": "Citizen module endpoint operational"}
+
+
+@router.post("/analyze-image", response_model=ImageAnalysisResponse)
+def analyze_waste_image(payload: ImageAnalysisRequest):
+    """Analyze garbage / waste image with Gemini AI or safe fallback."""
+    result = run_gemini_waste_analysis(payload.image_base64, payload.api_key)
+    return ImageAnalysisResponse(**result)
     return {"status": "success", "message": "Citizen module endpoint operational"}
 
 
@@ -299,7 +287,7 @@ def analyze_waste_image(payload: ImageAnalysisRequest):
     if not payload.image_base64:
         raise HTTPException(status_code=400, detail="image_base64 is required")
 
-    result = run_gemini_waste_analysis(payload.image_base64)
+    result = run_gemini_waste_analysis(payload.image_base64, payload.api_key)
     return ImageAnalysisResponse(**result)
 
 

@@ -137,10 +137,11 @@ const ReportWaste: React.FC = () => {
   const runAiDetector = useCallback(async (imageB64: string) => {
     setIsAiScanning(true);
     try {
+      const customKey = localStorage.getItem('nss_gemini_api_key') || undefined;
       const res = await fetch(`${API_BASE_URL}/api/citizen/analyze-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_base64: imageB64 }),
+        body: JSON.stringify({ image_base64: imageB64, api_key: customKey }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -158,17 +159,15 @@ const ReportWaste: React.FC = () => {
       }
     } catch (e) {
       console.warn('AI analysis fallback:', e);
-      // Fallback
       setAiAnalysisResult({
-        is_garbage: true,
-        waste_type: 'dry',
-        confidence: 94,
-        severity: 3,
-        detected_items: ['Plastic & Paper Packaging'],
-        description: 'Dry recyclable packaging and discarded solid waste detected.',
-        verification_message: 'Verified municipal waste incident by Nagpur SmartSanitation AI Engine.',
+        is_garbage: false,
+        waste_type: 'none',
+        confidence: 70,
+        severity: 1,
+        detected_items: ['Manual Selection Required'],
+        description: 'Photo uploaded. Please select the waste category below.',
+        verification_message: 'Please review and select the appropriate waste category below.',
       });
-      setWasteType('dry');
     } finally {
       setIsAiScanning(false);
     }
