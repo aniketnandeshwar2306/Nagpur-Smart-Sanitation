@@ -72,8 +72,8 @@ const SegregationGuide: React.FC = () => {
   return (
     <div className="citizen-fade-in space-y-6 max-w-6xl mx-auto pb-6">
       <div>
-        <h2 className="text-2xl font-bold text-white">♻️ Waste Segregation Guide &amp; Quiz</h2>
-        <p className="text-slate-400 text-sm mt-1">Proper segregation ensures effective municipal recycling across Nagpur.</p>
+        <h2 className="text-2xl font-bold text-[#1A2E22] dark:text-white">♻️ Waste Segregation Guide &amp; Quiz</h2>
+        <p className="text-[#5C6B61] dark:text-slate-300 text-sm mt-1">Proper segregation ensures effective municipal recycling across Nagpur.</p>
       </div>
 
       {/* Sub-nav */}
@@ -111,11 +111,11 @@ const SegregationGuide: React.FC = () => {
                 <p className="text-xs md:text-sm text-slate-300 leading-relaxed">{wetCategory.description}</p>
 
                 <div className="grid sm:grid-cols-2 gap-3 pt-2">
-                  {wetCategory.items.map(item => (
+                  {(wetCategory.items || []).map(item => (
                     <div key={item.name} className="bg-slate-950/60 border border-green-500/20 rounded-2xl p-3.5 flex items-center gap-3 group citizen-card-lift">
                       <span className="text-2xl">{item.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-white">{item.name}</div>
+                        <div className="text-xs font-bold text-[#1A2E22] dark:text-white">{item.name}</div>
                         <div className="text-[11px] text-slate-400 group-hover:text-green-300 transition-colors">{item.tip}</div>
                       </div>
                     </div>
@@ -137,11 +137,11 @@ const SegregationGuide: React.FC = () => {
                 <p className="text-xs md:text-sm text-slate-300 leading-relaxed">{dryCategory.description}</p>
 
                 <div className="grid sm:grid-cols-2 gap-3 pt-2">
-                  {dryCategory.items.map(item => (
+                  {(dryCategory.items || []).map(item => (
                     <div key={item.name} className="bg-slate-950/60 border border-amber-500/20 rounded-2xl p-3.5 flex items-center gap-3 group citizen-card-lift">
                       <span className="text-2xl">{item.icon}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-white">{item.name}</div>
+                        <div className="text-xs font-bold text-[#1A2E22] dark:text-white">{item.name}</div>
                         <div className="text-[11px] text-slate-400 group-hover:text-amber-300 transition-colors">{item.tip}</div>
                       </div>
                     </div>

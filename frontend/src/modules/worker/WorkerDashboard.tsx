@@ -1,320 +1,311 @@
 import React, { useState, useEffect } from 'react';
-import type { DailyTask, WorkerStats, WardZoneGeo, SegregationVerificationResult, TaskStatus } from './types';
-import { workerApi } from './api';
-import { WorkerHeader } from './components/WorkerHeader';
-import { WeatherAlertBanner } from './components/WeatherAlertBanner';
-import { DailyTasksList } from './components/DailyTasksList';
-import { GISWardMap } from './components/GISWardMap';
-import { SegregationModal } from './components/SegregationModal';
-import { TaskDetailModal } from './components/TaskDetailModal';
-import { SafetyChecklistModal } from './components/SafetyChecklistModal';
+import NagpurMap from '../../components/NagpurMap';
+import type { MapMarker } from '../../components/NagpurMap';
 
-export const WorkerDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'tasks' | 'map' | 'ai_verify' | 'stats'>('tasks');
-  const [language, setLanguage] = useState<'en' | 'mr' | 'hi'>('en');
-  const [tasks, setTasks] = useState<DailyTask[]>([]);
-  const [wards, setWards] = useState<WardZoneGeo[]>([]);
-  const [stats, setStats] = useState<WorkerStats>({
-    worker_id: 'WRK-4089',
-    worker_name: 'Rajesh Rao (राजेश राव)',
-    zone_assigned: 'Zone 2 - Dharampeth',
-    ward_number: 12,
-    shift_start: '06:00 AM',
-    shift_end: '02:30 PM',
-    total_assigned_today: 6,
-    completed_today: 1,
-    pending_today: 4,
-    in_progress_today: 1,
-    avg_segregation_accuracy: 94.2,
-    daily_incentive_earned_inr: 75.0,
-    safety_compliance_score: 98.5,
-    distance_covered_km: 7.8,
-    active_vehicle_number: 'MH-31-EQ-9104 (E-Tipper #12)'
-  });
+export type WorkerTab = 'dashboard' | 'route' | 'bins' | 'history' | 'profile';
 
-  const [isOnline] = useState<boolean>(true);
-  const [toastMessage, setToastMessage] = useState<{ title: string; type: 'success' | 'info' | 'warn' } | null>(null);
+interface WorkerDashboardProps {
+  activeTab?: string;
+  onNavigate?: (tab: string) => void;
+}
 
-  // Modal states
-  const [verifyingTask, setVerifyingTask] = useState<DailyTask | null>(null);
-  const [isVerifyModalOpen, setIsVerifyModalOpen] = useState<boolean>(false);
-  const [selectedTaskDetail, setSelectedTaskDetail] = useState<DailyTask | null>(null);
-  const [isSafetyChecklistOpen, setIsSafetyChecklistOpen] = useState<boolean>(false);
-  const [highlightedMapTaskId, setHighlightedMapTaskId] = useState<string | null>(null);
+const WORKER = {
+  id: 'W-002',
+  name: 'Suresh Meshram',
+  role: 'Senior Sanitation Driver',
+  zone: 'Zone B – Civil Lines & Sitabuldi',
+  vehicle: 'NMC-T18',
+  shift: '6:00 AM – 2:00 PM',
+  phone: '9823002222',
+  experience: '6 years',
+  rating: 4.8,
+  totalCollections: 2847,
+};
 
-  // Fetch initial data
+const ROUTE_BINS = [
+  { id: 'BIN-B01', location: 'Civil Lines – Near Bus Stand', fill: 94, status: 'critical', collected: false, lat: 21.1535, lng: 79.0949 },
+  { id: 'BIN-B02', location: 'Sitabuldi – Market Gate',      fill: 78, status: 'high',     collected: false, lat: 21.1388, lng: 79.0816 },
+  { id: 'BIN-B03', location: 'Dharampeth – College Square', fill: 62, status: 'normal',   collected: true,  lat: 21.1458, lng: 79.0882 },
+  { id: 'BIN-B04', location: 'Gokulpeth – Main Road',       fill: 45, status: 'normal',   collected: true,  lat: 21.1420, lng: 79.0960 },
+  { id: 'BIN-B05', location: 'Itwari – Old Market',         fill: 88, status: 'high',     collected: false, lat: 21.1490, lng: 79.0840 },
+  { id: 'BIN-B06', location: 'Wardha Road – Junction',      fill: 35, status: 'normal',   collected: true,  lat: 21.1400, lng: 79.0750 },
+];
+
+const HISTORY = [
+  { date: 'Today', bins: 14, route: 'Zone B – Route 4', weight: '3.2t', start: '6:05 AM', status: 'In Progress' },
+  { date: 'Yesterday', bins: 22, route: 'Zone B – Route 4', weight: '5.1t', start: '6:00 AM', status: 'Completed' },
+  { date: 'Mon, Oct 21', bins: 20, route: 'Zone B – Route 3', weight: '4.8t', start: '6:10 AM', status: 'Completed' },
+  { date: 'Sun, Oct 20', bins: 0, route: '—', weight: '—', start: '—', status: 'Off Day' },
+  { date: 'Sat, Oct 19', bins: 24, route: 'Zone B – Route 4', weight: '5.6t', start: '6:00 AM', status: 'Completed' },
+];
+
+const fillColor = (fill: number) => {
+  if (fill >= 90) return 'bg-rose-500';
+  if (fill >= 75) return 'bg-amber-500';
+  return 'bg-[#2D5A3F]';
+};
+const fillBadge = (status: string) => {
+  if (status === 'critical') return 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300';
+  if (status === 'high') return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300';
+  return 'bg-[#E3EBD8] text-[#2D5A3F] dark:bg-emerald-950 dark:text-emerald-300';
+};
+
+const TRUCK_MARKERS: MapMarker[] = [
+  { lat: 21.1458, lng: 79.0882, label: 'NMC-T18 – Your Vehicle (Active)', type: 'truck' },
+  ...ROUTE_BINS.map(b => ({ lat: b.lat, lng: b.lng, label: b.location, type: 'bin' as const })),
+];
+
+export const WorkerDashboard: React.FC<WorkerDashboardProps> = ({
+  activeTab: propTab = 'dashboard',
+}) => {
+  // Sync with Left Sidebar selection
+  const currentTab: WorkerTab = (['dashboard', 'route', 'bins', 'history', 'profile'].includes(propTab) ? propTab : 'dashboard') as WorkerTab;
+
+  const [etaSeconds, setEtaSeconds] = useState(254);
+  const [collectedBins, setCollectedBins] = useState(
+    ROUTE_BINS.reduce((acc, b) => ({ ...acc, [b.id]: b.collected }), {} as Record<string, boolean>)
+  );
+
   useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
-      try {
-        const [taskList, wardList, statsData] = await Promise.all([
-          workerApi.getTasks({ workerId: 'WRK-4089' }),
-          workerApi.getWards(),
-          workerApi.getStats('WRK-4089')
-        ]);
-        if (isMounted) {
-          setTasks(taskList);
-          setWards(wardList);
-          setStats(statsData);
-        }
-      } catch (err) {
-        console.error('Error initializing worker dashboard:', err);
-      }
-    };
-
-    loadData();
-    return () => { isMounted = false; };
+    const timer = setInterval(() => {
+      setEtaSeconds(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  const showToast = (title: string, type: 'success' | 'info' | 'warn' = 'success') => {
-    setToastMessage({ title, type });
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
-  };
-
-  // Handle task status update
-  const handleStatusChange = async (taskId: string, newStatus: TaskStatus, notes?: string) => {
-    try {
-      const updated = await workerApi.updateTaskStatus(taskId, {
-        status: newStatus,
-        worker_notes: notes
-      });
-
-      setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, ...updated } : t)));
-
-      // Recalculate local stats
-      setStats(prev => {
-        const completed = newStatus === 'COMPLETED' ? prev.completed_today + 1 : prev.completed_today;
-        const pending = Math.max(0, prev.total_assigned_today - completed);
-        return {
-          ...prev,
-          completed_today: completed,
-          pending_today: pending,
-          daily_incentive_earned_inr: prev.daily_incentive_earned_inr + (newStatus === 'COMPLETED' ? 25 : 0)
-        };
-      });
-
-      showToast(
-        language === 'mr'
-          ? `तक्रार स्थिती अपडेट केली: ${newStatus}`
-          : `Task ${taskId} updated to ${newStatus}`,
-        'success'
-      );
-    } catch (err) {
-      console.error('Failed to update task status:', err);
-      showToast('Failed to update task status', 'warn');
-    }
-  };
-
-  // Handle AI Segregation Completion
-  const handleVerificationComplete = async (taskId: string, result: SegregationVerificationResult) => {
-    try {
-      const isPassed = result.verdict === 'PASSED';
-      await handleStatusChange(
-        taskId,
-        isPassed ? 'COMPLETED' : 'IN_PROGRESS',
-        `AI Segregation: ${result.overall_score}% (${result.primary_category}). ${result.feedback_english}`
-      );
-
-      setTasks(prev =>
-        prev.map(t =>
-          t.id === taskId
-            ? {
-                ...t,
-                segregation_score: result.overall_score,
-                verification_status: result.verdict
-              }
-            : t
-        )
-      );
-
-      showToast(
-        language === 'mr'
-          ? `AI तपासणी यशस्वी: ${result.overall_score}% शुद्धता (+₹${result.incentive_earned_inr} जमा)`
-          : `AI Verification: ${result.overall_score}% Purity (+₹${result.incentive_earned_inr} Bonus)`,
-        isPassed ? 'success' : 'warn'
-      );
-    } catch (err) {
-      console.error('Failed to handle verification result:', err);
-    }
-  };
-
-  const handleOpenVerifyModal = (task?: DailyTask) => {
-    setVerifyingTask(task || tasks[0] || null);
-    setIsVerifyModalOpen(true);
-  };
-
-  const handleNavigateToMap = (task: DailyTask) => {
-    setHighlightedMapTaskId(task.id);
-    setActiveTab('map');
-    showToast(`Focused on ${task.location.address}`, 'info');
-  };
+  const eta = `${Math.floor(etaSeconds / 60)}m ${etaSeconds % 60}s`;
+  const totalCollected = Object.values(collectedBins).filter(Boolean).length;
+  const totalBins = ROUTE_BINS.length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-24 font-sans selection:bg-amber-500 selection:text-slate-950">
-      {/* Worker Sticky Header */}
-      <WorkerHeader
-        stats={stats}
-        language={language}
-        onLanguageChange={setLanguage}
-        onOpenSafetyChecklist={() => setIsSafetyChecklistOpen(true)}
-        isOnline={isOnline}
-      />
-
-      {/* Push-style Real-time Weather & Hazard Alert Banner */}
-      <WeatherAlertBanner
-        language={language}
-        zoneFilter={stats.zone_assigned}
-        onOpenChecklist={() => setIsSafetyChecklistOpen(true)}
-      />
-
-      {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 py-4 space-y-4">
-        {/* Navigation Tabs */}
-        <div className="flex items-center justify-between gap-1 bg-slate-900/90 backdrop-blur-md p-1.5 rounded-2xl border border-slate-800 shadow-xl">
-          <button
-            onClick={() => setActiveTab('tasks')}
-            className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
-              activeTab === 'tasks'
-                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>📋</span>
-            <span>{language === 'mr' ? 'दैनिक कामे' : 'Daily Tasks'}</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                activeTab === 'tasks' ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800 text-slate-400'
-              }`}
-            >
-              {tasks.filter(t => t.status !== 'COMPLETED').length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('map')}
-            className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
-              activeTab === 'map'
-                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>🗺️</span>
-            <span>{language === 'mr' ? 'GIS प्रभाग नकाशा' : 'GIS Ward Map'}</span>
-          </button>
-
-          <button
-            onClick={() => handleOpenVerifyModal()}
-            className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
-              activeTab === 'ai_verify'
-                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>📷</span>
-            <span>{language === 'mr' ? 'AI स्कॅनर' : 'AI Scanner'}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('stats')}
-            className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all ${
-              activeTab === 'stats'
-                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <span>📊</span>
-            <span>{language === 'mr' ? 'माझी कामगिरी' : 'My Shift'}</span>
-          </button>
+    <div className="space-y-6 eco-animate-fade">
+      {/* Worker Header Card */}
+      <div className="bg-[#2D5A3F] text-white rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl font-bold">
+            👷
+          </div>
+          <div>
+            <h1 className="text-xl font-serif font-bold">{WORKER.name}</h1>
+            <p className="text-[#C8E8CD] text-sm font-medium">{WORKER.role} · {WORKER.zone}</p>
+          </div>
         </div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="bg-white/15 border border-white/20 px-3.5 py-1.5 rounded-full text-sm font-semibold flex items-center gap-2">
+            🚛 {WORKER.vehicle}
+          </div>
+          <div className="bg-[#C8E8CD] text-[#1F402B] px-3.5 py-1.5 rounded-full text-sm font-bold flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#1F402B] animate-pulse" />
+            On Duty
+          </div>
+        </div>
+      </div>
 
-        {/* Tab Views */}
-        {activeTab === 'tasks' && (
-          <DailyTasksList
-            tasks={tasks}
-            language={language}
-            onSelectTask={task => setSelectedTaskDetail(task)}
-            onVerifyTask={task => handleOpenVerifyModal(task)}
-            onStatusChange={handleStatusChange}
-            onNavigateToMap={handleNavigateToMap}
-          />
-        )}
+      <div className="space-y-6">
 
-        {activeTab === 'map' && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-              <span>📍 Centered on Nagpur Dharampeth (Zone 2)</span>
-              <span className="text-amber-400 font-semibold">• Live GPS Active</span>
+        {/* ── WORKER DASHBOARD ── */}
+        {currentTab === 'dashboard' && (
+          <div className="space-y-6">
+            {/* Today's Progress Banner */}
+            <div className="eco-card p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <div className="text-[#2D5A3F] dark:text-emerald-400 text-sm font-bold uppercase tracking-wider mb-1">Today's Collection Progress</div>
+                <div className="text-5xl font-serif font-bold text-[#1A2E22] dark:text-slate-100">{totalCollected} / {totalBins}</div>
+                <div className="text-[#5C6B61] dark:text-slate-400 text-base mt-1">Bins collected · Zone B Route 4</div>
+              </div>
+              <div className="flex flex-col items-start md:items-end gap-3">
+                <div className="w-full md:w-56 bg-[#E5E8E0] dark:bg-slate-700 h-3 rounded-full overflow-hidden">
+                  <div
+                    style={{ width: `${(totalCollected / totalBins) * 100}%` }}
+                    className="bg-[#2D5A3F] dark:bg-emerald-500 h-full rounded-full transition-all duration-700"
+                  />
+                </div>
+                <span className="text-sm font-bold text-[#2D5A3F] dark:text-emerald-400">{Math.round((totalCollected / totalBins) * 100)}% Complete</span>
+              </div>
             </div>
-            <GISWardMap
-              tasks={tasks}
-              wards={wards}
-              language={language}
-              onSelectTask={task => setSelectedTaskDetail(task)}
-              onVerifyTask={task => handleOpenVerifyModal(task)}
-              selectedTaskId={highlightedMapTaskId}
-            />
+
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+              {[
+                { label: 'Bins Collected',   value: `${totalCollected}/${totalBins}`, icon: '🗑️', color: '#2D5A3F' },
+                { label: 'Next Bin ETA',     value: eta,         icon: '⏱️', color: '#8B6D4C' },
+                { label: 'Waste Collected',  value: '3.2 tons',  icon: '⚖️', color: '#1d4ed8' },
+                { label: 'Fuel Level',       value: '55%',       icon: '⛽', color: '#5C6B61' },
+              ].map((kpi, i) => (
+                <div key={i} className="eco-card p-6 flex flex-col justify-between min-h-[130px]">
+                  <div className="w-11 h-11 rounded-2xl bg-[#E3EBD8] dark:bg-slate-800 flex items-center justify-center text-xl">
+                    {kpi.icon}
+                  </div>
+                  <div className="mt-3">
+                    <div className="text-2xl font-serif font-bold text-[#1A2E22] dark:text-slate-100">{kpi.value}</div>
+                    <div className="text-sm text-[#5C6B61] dark:text-slate-400 font-medium mt-0.5">{kpi.label}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Live Map */}
+            <div className="eco-card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-serif font-bold text-[#1A2E22] dark:text-slate-100">My Route – Live Map</h2>
+                <span className="eco-badge-green"><span className="w-2 h-2 rounded-full bg-[#1F402B] animate-pulse" />GPS Active</span>
+              </div>
+              <div className="rounded-2xl overflow-hidden border border-[#E5E8E0] dark:border-slate-700 h-72">
+                <NagpurMap className="w-full h-full" markers={TRUCK_MARKERS} zoom={14} />
+              </div>
+            </div>
           </div>
         )}
 
-        {activeTab === 'stats' && (
-          <div className="space-y-4">
-            {/* Shift Profile Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-              <div className="flex items-start justify-between">
+        {/* ── ROUTE ── */}
+        {currentTab === 'route' && (
+          <div className="space-y-6">
+            <div className="eco-card p-6">
+              <h2 className="text-2xl font-serif font-bold text-[#1A2E22] dark:text-slate-100">My Assigned Route – Zone B Route 4</h2>
+              <p className="text-[#5C6B61] dark:text-slate-400 text-sm mt-1">Civil Lines → Sitabuldi → Dharampeth → Gokulpeth → Itwari · 14.8 km</p>
+            </div>
+            <div className="eco-card p-6">
+              <div className="rounded-2xl overflow-hidden border border-[#E5E8E0] dark:border-slate-700 h-96">
+                <NagpurMap className="w-full h-full" markers={TRUCK_MARKERS} zoom={14} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── BINS ── */}
+        {currentTab === 'bins' && (
+          <div className="space-y-6">
+            <div className="eco-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-serif font-bold text-[#1A2E22] dark:text-slate-100">Bin Collection Checklist</h2>
+                <p className="text-[#5C6B61] dark:text-slate-400 text-sm mt-1">Mark bins as collected and report issues. {totalCollected}/{totalBins} done today.</p>
+              </div>
+              <span className="eco-badge-green text-sm font-bold">
+                {Math.round((totalCollected / totalBins) * 100)}% Complete
+              </span>
+            </div>
+
+            <div className="eco-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-[#F5F5F0] dark:bg-slate-800 border-b border-[#E5E8E0] dark:border-slate-700">
+                      {['Bin ID', 'Location', 'Fill Level', 'Status', 'Collected', 'Action'].map(h => (
+                        <th key={h} className="text-left px-5 py-3.5 text-xs font-bold text-[#5C6B61] dark:text-slate-400 uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E5E8E0] dark:divide-slate-700">
+                    {ROUTE_BINS.map(b => (
+                      <tr key={b.id} className={`hover:bg-[#F9FAF7] dark:hover:bg-slate-800/60 transition-colors ${collectedBins[b.id] ? 'opacity-60' : ''}`}>
+                        <td className="px-5 py-4 font-mono text-sm font-bold text-[#2D5A3F] dark:text-emerald-400">{b.id}</td>
+                        <td className="px-5 py-4 text-sm text-[#1A2E22] dark:text-slate-200 font-medium">{b.location}</td>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 bg-[#E5E8E0] dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                              <div style={{ width: `${b.fill}%` }} className={`h-full rounded-full ${fillColor(b.fill)}`} />
+                            </div>
+                            <span className="text-sm font-bold text-[#1A2E22] dark:text-slate-200">{b.fill}%</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${fillBadge(b.status)}`}>{b.status}</span>
+                        </td>
+                        <td className="px-5 py-4">
+                          {collectedBins[b.id]
+                            ? <span className="text-[#2D5A3F] dark:text-emerald-400 font-bold text-sm">✅ Done</span>
+                            : <span className="text-[#5C6B61] dark:text-slate-400 text-sm">Pending</span>
+                          }
+                        </td>
+                        <td className="px-5 py-4">
+                          {!collectedBins[b.id] && (
+                            <button
+                              onClick={() => setCollectedBins(p => ({ ...p, [b.id]: true }))}
+                              className="text-xs bg-[#2D5A3F] text-white font-bold px-3 py-1.5 rounded-xl hover:bg-[#21432E] transition-colors"
+                            >
+                              Mark Collected
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── HISTORY ── */}
+        {currentTab === 'history' && (
+          <div className="space-y-6">
+            <div className="eco-card p-6">
+              <h2 className="text-2xl font-serif font-bold text-[#1A2E22] dark:text-slate-100">Collection History</h2>
+              <p className="text-[#5C6B61] dark:text-slate-400 text-sm mt-1">Your past 5 days of collection performance and route logs.</p>
+            </div>
+
+            <div className="eco-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-[#F5F5F0] dark:bg-slate-800 border-b border-[#E5E8E0] dark:border-slate-700">
+                      {['Date', 'Route', 'Bins Collected', 'Total Weight', 'Start Time', 'Status'].map(h => (
+                        <th key={h} className="text-left px-5 py-3.5 text-xs font-bold text-[#5C6B61] dark:text-slate-400 uppercase tracking-wider">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E5E8E0] dark:divide-slate-700">
+                    {HISTORY.map((h, i) => (
+                      <tr key={i} className="hover:bg-[#F9FAF7] dark:hover:bg-slate-800/60 transition-colors">
+                        <td className="px-5 py-4 text-sm font-bold text-[#1A2E22] dark:text-slate-200">{h.date}</td>
+                        <td className="px-5 py-4 text-sm text-[#5C6B61] dark:text-slate-400">{h.route}</td>
+                        <td className="px-5 py-4 text-sm font-bold text-[#2D5A3F] dark:text-emerald-400">{h.bins > 0 ? h.bins : '—'}</td>
+                        <td className="px-5 py-4 text-sm text-[#1A2E22] dark:text-slate-200">{h.weight}</td>
+                        <td className="px-5 py-4 text-sm text-[#5C6B61] dark:text-slate-400">{h.start}</td>
+                        <td className="px-5 py-4">
+                          <span className="eco-badge-green">{h.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── PROFILE ── */}
+        {currentTab === 'profile' && (
+          <div className="space-y-6 max-w-2xl">
+            <div className="eco-card p-8 flex flex-col md:flex-row gap-6 items-start">
+              <div className="w-20 h-20 rounded-full bg-[#2D5A3F] text-white flex items-center justify-center text-4xl font-bold shrink-0">
+                👷
+              </div>
+              <div className="flex-1 space-y-4">
                 <div>
-                  <span className="text-[10px] font-black uppercase text-amber-400 tracking-wider">
-                    Official Duty Shift
-                  </span>
-                  <h3 className="text-xl font-bold text-slate-100 mt-0.5">{stats.worker_name}</h3>
-                  <p className="text-xs text-slate-400">
-                    ID: {stats.worker_id} • Ward {stats.ward_number} ({stats.zone_assigned})
-                  </p>
+                  <h3 className="text-2xl font-serif font-bold text-[#1A2E22] dark:text-slate-100">{WORKER.name}</h3>
+                  <p className="text-[#5C6B61] dark:text-slate-400 text-sm font-medium">{WORKER.role}</p>
                 </div>
-                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1.5 rounded-xl text-xs font-bold">
-                  Active Shift: {stats.shift_start} - {stats.shift_end}
-                </div>
-              </div>
-
-              {/* Grid Metrics */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Assigned Stops</span>
-                  <span className="text-2xl font-black text-slate-100">{stats.total_assigned_today}</span>
-                </div>
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Cleared Bins</span>
-                  <span className="text-2xl font-black text-emerald-400">{stats.completed_today}</span>
-                </div>
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Route Distance</span>
-                  <span className="text-2xl font-black text-sky-400">{stats.distance_covered_km} km</span>
-                </div>
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-center">
-                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Daily Bonus</span>
-                  <span className="text-2xl font-black text-lime-400">₹{stats.daily_incentive_earned_inr}</span>
-                </div>
-              </div>
-
-              {/* Vehicle & Equipment Details */}
-              <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Assigned Vehicle:</span>
-                  <span className="font-bold text-amber-400">{stats.active_vehicle_number}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Swachh Bharat Safety Rating:</span>
-                  <span className="font-bold text-emerald-400">{stats.safety_compliance_score}% (Grade A+)</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Avg AI Segregation Accuracy:</span>
-                  <span className="font-bold text-cyan-400">{stats.avg_segregation_accuracy}%</span>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {[
+                    { label: 'Worker ID', value: WORKER.id },
+                    { label: 'Zone Assignment', value: WORKER.zone },
+                    { label: 'Assigned Vehicle', value: WORKER.vehicle },
+                    { label: 'Shift Hours', value: WORKER.shift },
+                    { label: 'Contact', value: WORKER.phone },
+                    { label: 'Experience', value: WORKER.experience },
+                  ].map((f, i) => (
+                    <div key={i} className="bg-[#F5F5F0] dark:bg-slate-800 p-3 rounded-xl border border-[#E5E8E0] dark:border-slate-700">
+                      <div className="text-xs font-bold text-[#5C6B61] dark:text-slate-400 uppercase tracking-wide">{f.label}</div>
+                      <div className="font-semibold text-[#1A2E22] dark:text-slate-100 mt-0.5">{f.value}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
         )}
+
       </div>
 
       {/* Floating Bottom Quick Action Bar for Mobile Workers */}

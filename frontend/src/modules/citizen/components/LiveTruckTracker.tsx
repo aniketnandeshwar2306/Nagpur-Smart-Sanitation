@@ -171,10 +171,10 @@ const LiveTruckTracker: React.FC = () => {
       <div>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-[#1A2E22] dark:text-white flex items-center gap-2">
               <span>🚛</span> Live Sanitation Truck GPS Radar
             </h2>
-            <p className="text-slate-400 text-sm mt-1">Real-time GPS tracking for NMC Vehicle #NMC-T101 in Dharampeth Ward 14.</p>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">Real-time GPS tracking for NMC Vehicle #NMC-T101 in Dharampeth Ward 14.</p>
           </div>
 
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold shadow-sm capitalize">

@@ -139,10 +139,10 @@ export const MyComplaints: React.FC = () => {
               <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
               Grievance Tracking Portal
             </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold text-white">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-[#1A2E22] dark:text-white">
               Previous Complaints &amp; Tracking
             </h2>
-            <p className="text-slate-400 text-sm md:text-base mt-1.5 max-w-2xl">
+            <p className="text-[#5C6B61] dark:text-slate-300 text-sm md:text-base mt-1.5 max-w-2xl">
               Track your waste reporting history, monitor resolution timeline, view submitted photographs, and directly contact your ward&apos;s assigned sanitation authority.
             </p>
           </div>

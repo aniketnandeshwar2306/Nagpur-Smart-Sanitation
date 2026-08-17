@@ -95,8 +95,8 @@ const RewardsPanel: React.FC = () => {
   return (
     <div className="citizen-fade-in space-y-6 max-w-6xl mx-auto pb-6">
       <div>
-        <h2 className="text-2xl font-bold text-white">🌿 GreenPoints &amp; Gamification</h2>
-        <p className="text-slate-400 text-sm mt-1">Earn points for waste reports &amp; segregation. Redeem vouchers or check the civic leaderboard.</p>
+        <h2 className="text-2xl font-bold text-[#1A2E22] dark:text-white">🌿 GreenPoints &amp; Gamification</h2>
+        <p className="text-slate-600 dark:text-slate-400 text-sm mt-1">Earn points for waste reports &amp; segregation. Redeem vouchers or check the civic leaderboard.</p>
       </div>
 
       {/* Hero Card — Points + Tier */}
