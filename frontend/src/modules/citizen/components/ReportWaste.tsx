@@ -209,87 +209,92 @@ CRITICAL RULES:
 
 Return ONLY a valid JSON object.`;
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${customKey}`;
-        const body = {
-          contents: [{
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: mime,
-                  data: data,
+        const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite'];
+        for (const model of GEMINI_MODELS) {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${customKey}`;
+          const body = {
+            contents: [{
+              parts: [
+                { text: prompt },
+                {
+                  inline_data: {
+                    mime_type: mime,
+                    data: data,
+                  },
                 },
-              },
-            ],
-          }],
-          generationConfig: {
-            response_mime_type: 'application/json',
-          },
-        };
+              ],
+            }],
+            generationConfig: {
+              response_mime_type: 'application/json',
+            },
+          };
 
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
+          try {
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body),
+            });
 
-        if (res.ok) {
-          const resData = await res.json();
-          const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (rawText) {
-            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              console.log('[Direct Gemini AI] Result:', parsed.is_garbage ? 'GARBAGE' : 'NOT GARBAGE', parsed.waste_type);
-              setAiAnalysisResult(parsed);
-              if (parsed.is_garbage) {
-                const cat = ['wet', 'dry', 'hazardous', 'e-waste', 'mixed'].includes(parsed.waste_type)
-                  ? (parsed.waste_type as WasteType)
-                  : 'dry';
-                setWasteType(cat);
-                setSeverity(parsed.severity || 3);
-                if (parsed.description) {
-                  setDescription(prev => prev ? prev : parsed.description);
+            if (res.ok) {
+              const resData = await res.json();
+              const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (rawText) {
+                const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                  const parsed = JSON.parse(jsonMatch[0]);
+                  console.log(`[Direct Gemini AI - ${model}] Result:`, parsed.is_garbage ? 'GARBAGE' : 'NOT GARBAGE', parsed.waste_type);
+                  setAiAnalysisResult(parsed);
+                  if (parsed.is_garbage) {
+                    const cat = ['wet', 'dry', 'hazardous', 'e-waste', 'mixed'].includes(parsed.waste_type)
+                      ? (parsed.waste_type as WasteType)
+                      : 'dry';
+                    setWasteType(cat);
+                    setSeverity(parsed.severity || 3);
+                    if (parsed.description) {
+                      setDescription(prev => prev ? prev : parsed.description);
+                    }
+                  }
+                  setIsAiScanning(false);
+                  return;
                 }
               }
-              setIsAiScanning(false);
-              return;
-            }
-          }
-        } else {
-          const errBody = await res.text();
-          console.warn('[Direct Gemini API] Non-200 response:', res.status, errBody);
-          // Retry without generationConfig (some models don't support it)
-          const retryBody = { ...body };
-          delete (retryBody as Record<string, unknown>).generationConfig;
-          const retryRes = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(retryBody),
-          });
-          if (retryRes.ok) {
-            const retryData = await retryRes.json();
-            const retryRaw = retryData.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (retryRaw) {
-              const retryMatch = retryRaw.match(/\{[\s\S]*\}/);
-              if (retryMatch) {
-                const parsed = JSON.parse(retryMatch[0]);
-                console.log('[Direct Gemini AI Retry] Result:', parsed.is_garbage ? 'GARBAGE' : 'NOT GARBAGE', parsed.waste_type);
-                setAiAnalysisResult(parsed);
-                if (parsed.is_garbage) {
-                  const cat = ['wet', 'dry', 'hazardous', 'e-waste', 'mixed'].includes(parsed.waste_type)
-                    ? (parsed.waste_type as WasteType)
-                    : 'dry';
-                  setWasteType(cat);
-                  setSeverity(parsed.severity || 3);
-                  if (parsed.description) {
-                    setDescription(prev => prev ? prev : parsed.description);
+            } else {
+              // Retry without generationConfig
+              const retryBody = { ...body };
+              delete (retryBody as Record<string, unknown>).generationConfig;
+              const retryRes = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(retryBody),
+              });
+              if (retryRes.ok) {
+                const retryData = await retryRes.json();
+                const retryRaw = retryData.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (retryRaw) {
+                  const retryMatch = retryRaw.match(/\{[\s\S]*\}/);
+                  if (retryMatch) {
+                    const parsed = JSON.parse(retryMatch[0]);
+                    console.log(`[Direct Gemini AI Retry - ${model}] Result:`, parsed.is_garbage ? 'GARBAGE' : 'NOT GARBAGE', parsed.waste_type);
+                    setAiAnalysisResult(parsed);
+                    if (parsed.is_garbage) {
+                      const cat = ['wet', 'dry', 'hazardous', 'e-waste', 'mixed'].includes(parsed.waste_type)
+                        ? (parsed.waste_type as WasteType)
+                        : 'dry';
+                      setWasteType(cat);
+                      setSeverity(parsed.severity || 3);
+                      if (parsed.description) {
+                        setDescription(prev => prev ? prev : parsed.description);
+                      }
+                    }
+                    setIsAiScanning(false);
+                    return;
                   }
                 }
-                setIsAiScanning(false);
-                return;
               }
             }
+          } catch (modelErr) {
+            console.warn(`[Gemini Model ${model} Failed]`, modelErr);
           }
         }
       } catch (clientErr) {
@@ -306,7 +311,6 @@ Return ONLY a valid JSON object.`;
       });
       if (res.ok) {
         const data = await res.json();
-
         setAiAnalysisResult(data);
         if (data.is_garbage) {
           const cat = ['wet', 'dry', 'hazardous', 'e-waste', 'mixed'].includes(data.waste_type)
@@ -323,15 +327,8 @@ Return ONLY a valid JSON object.`;
       }
     } catch (e) {
       console.warn('AI analysis fallback:', e);
-      setAiAnalysisResult({
-        is_garbage: false,
-        waste_type: 'none',
-        confidence: 70,
-        severity: 1,
-        detected_items: ['Manual Selection Required'],
-        description: 'Photo uploaded. Please select the waste category below.',
-        verification_message: 'Please review and select the appropriate waste category below.',
-      });
+      // If AI fails completely, leave category for manual selection and don't block user with false warning banner
+      setAiAnalysisResult(null);
     } finally {
       setIsAiScanning(false);
     }

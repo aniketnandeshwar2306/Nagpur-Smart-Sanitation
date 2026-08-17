@@ -173,7 +173,7 @@ def run_gemini_waste_analysis(image_base64_str: str, client_api_key: Optional[st
 
     if api_key:
         # 1. Try Google Gemini REST API across multiple models & configurations
-        for model in ["gemini-3.6-flash", "gemini-2.5-flash"]:
+        for model in ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.5-flash-lite"]:
             for with_config in [True, False]:
                 try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
@@ -227,7 +227,7 @@ def run_gemini_waste_analysis(image_base64_str: str, client_api_key: Optional[st
             client = genai.Client(api_key=api_key)
             img_bytes = base64.b64decode(clean_b64)
             response = client.models.generate_content(
-                model='gemini-3.6-flash',
+                model='gemini-2.5-flash',
                 contents=[
                     types.Part.from_bytes(data=img_bytes, mime_type=mime_type),
                     prompt
