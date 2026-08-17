@@ -270,6 +270,29 @@ Return ONLY a valid JSON object.`;
       });
       if (res.ok) {
         const data = await res.json();
+
+        // Strict guard against stale/cached backend mock text
+        const isStaleMock = [
+          'Biodegradable organic household waste detected',
+          'Potentially hazardous materials detected',
+          'Dry recyclable packaging & plastic litter detected',
+          'Accumulation of mixed municipal waste requiring immediate pickup',
+          'E-Waste components detected'
+        ].some(mockStr => data.description?.includes(mockStr));
+
+        if (isStaleMock) {
+          setAiAnalysisResult({
+            is_garbage: false,
+            waste_type: 'none',
+            confidence: 70,
+            severity: 1,
+            detected_items: ['Manual Selection Required'],
+            description: 'Photo uploaded. Please select the waste category below.',
+            verification_message: 'Please review and select the appropriate waste category below.',
+          });
+          return;
+        }
+
         setAiAnalysisResult(data);
         if (data.is_garbage) {
           const cat = ['wet', 'dry', 'hazardous', 'e-waste', 'mixed'].includes(data.waste_type)
