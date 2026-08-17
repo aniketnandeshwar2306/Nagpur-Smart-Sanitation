@@ -621,9 +621,19 @@ const ReportWaste: React.FC = () => {
                     <div className="text-sm font-bold text-slate-100">{aiAnalysisResult.description}</div>
                   </div>
                 </div>
-                <span className="text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-500/30">
-                  {aiAnalysisResult.confidence}% Verified
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-500/30">
+                    {aiAnalysisResult.confidence}% Verified
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => capturedImage && runAiDetector(capturedImage)}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition-colors cursor-pointer"
+                    title="Re-run AI Analysis"
+                  >
+                    🔄
+                  </button>
+                </div>
               </div>
               {aiAnalysisResult.detected_items && aiAnalysisResult.detected_items.length > 0 && (
                 <div className="flex items-center gap-1.5 flex-wrap pt-1">

@@ -131,70 +131,84 @@ def run_gemini_waste_analysis(image_base64_str: str) -> dict:
     if "," in clean_b64:
         clean_b64 = clean_b64.split(",")[1].strip()
 
+    # Dynamic MIME detection
+    mime_type = "image/jpeg"
+    if "image/png" in image_base64_str.lower() or clean_b64.startswith("iVBOR"):
+        mime_type = "image/png"
+    elif "image/webp" in image_base64_str.lower() or clean_b64.startswith("UklGR"):
+        mime_type = "image/webp"
+    elif "image/gif" in image_base64_str.lower() or clean_b64.startswith("R0lGOD"):
+        mime_type = "image/gif"
+
+    # Sanitize base64 string
+    clean_b64 = re.sub(r'[^A-Za-z0-9+/=]', '', clean_b64)
+
     prompt = (
-        "You are an expert civic municipal sanitation inspector AI for Nagpur Municipal Corporation (NMC).\n"
+        "You are an expert municipal solid waste inspector AI for Nagpur Municipal Corporation (NMC).\n"
         "Analyze this waste/garbage photo and return a strict JSON object with this EXACT schema:\n"
         "{\n"
         '  "is_garbage": true,\n'
         '  "waste_type": "wet" | "dry" | "hazardous" | "e-waste" | "mixed",\n'
-        '  "confidence": 92,\n'
+        '  "confidence": 94,\n'
         '  "severity": 3,\n'
         '  "detected_items": ["item1", "item2", "item3"],\n'
         '  "description": "Short 1-2 sentence description of the waste accumulation.",\n'
-        '  "verification_message": "Official NMC inspection verification summary."\n'
+        '  "verification_message": "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."\n'
         "}\n"
         "Rules:\n"
-        "- If the image contains garbage, street litter, solid waste, organic waste, plastic, or debris, set is_garbage to true.\n"
+        "- If the image contains street litter, garbage, solid waste, organic waste, plastic, or debris, set is_garbage to true.\n"
         "- If the image is a clear non-garbage photo (e.g. clean sky, pet, person with no waste), set is_garbage to false.\n"
-        "- Classify waste_type accurately as wet (food/kitchen/leaves), dry (plastic/paper/boxes/cans), hazardous (chemicals/medical/broken glass), e-waste (electronics/wires), or mixed.\n"
-        "- Return ONLY valid JSON, no markdown backticks, no other text."
+        "- Classify waste_type accurately as wet (food/kitchen/vegetables/leaves), dry (plastic/paper/boxes/cans), hazardous (chemicals/medical/broken glass), e-waste (electronics/wires), or mixed.\n"
+        "- Return ONLY valid JSON."
     )
 
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 
     if api_key:
-        # 1. Try Google Gemini REST API (gemini-1.5-flash / gemini-2.0-flash)
-        for model in ["gemini-1.5-flash", "gemini-2.0-flash"]:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-                payload = {
-                    "contents": [{
-                        "parts": [
-                            {"text": prompt},
-                            {
-                                "inline_data": {
-                                    "mime_type": "image/jpeg",
-                                    "data": clean_b64
+        # 1. Try Google Gemini REST API across multiple models & configurations
+        for model in ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]:
+            for with_config in [True, False]:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                    payload: dict = {
+                        "contents": [{
+                            "parts": [
+                                {"text": prompt},
+                                {
+                                    "inline_data": {
+                                        "mime_type": mime_type,
+                                        "data": clean_b64
+                                    }
                                 }
-                            }
-                        ]
-                    }],
-                    "generationConfig": {
-                        "response_mime_type": "application/json"
+                            ]
+                        }]
                     }
-                }
-                res = requests.post(url, json=payload, timeout=12)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts:
-                            raw_text = parts[0].get("text", "").strip()
-                            clean_json = re.sub(r"^```(json)?|```$", "", raw_text, flags=re.MULTILINE).strip()
-                            parsed = json.loads(clean_json)
-                            print(f"[Gemini AI Vision SUCCESS] Model {model} classified: {parsed.get('waste_type')}", flush=True)
-                            return {
-                                "is_garbage": bool(parsed.get("is_garbage", True)),
-                                "waste_type": str(parsed.get("waste_type", "dry")).lower(),
-                                "confidence": int(parsed.get("confidence", 92)),
-                                "severity": int(parsed.get("severity", 3)),
-                                "detected_items": list(parsed.get("detected_items", ["Municipal waste accumulation"])),
-                                "description": str(parsed.get("description", "Solid waste detected by Gemini Vision AI.")),
-                                "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."))
-                            }
-            except Exception as e:
-                print(f"[Gemini REST API Warning with {model}] {e}", flush=True)
+                    if with_config:
+                        payload["generationConfig"] = {"response_mime_type": "application/json"}
+
+                    res = requests.post(url, json=payload, timeout=14)
+                    if res.status_code == 200:
+                        data = res.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            if parts:
+                                raw_text = parts[0].get("text", "").strip()
+                                json_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+                                if json_match:
+                                    parsed = json.loads(json_match.group())
+                                    print(f"[Gemini AI Vision SUCCESS] Model {model} classified: {parsed.get('waste_type')}", flush=True)
+                                    return {
+                                        "is_garbage": bool(parsed.get("is_garbage", True)),
+                                        "waste_type": str(parsed.get("waste_type", "dry")).lower(),
+                                        "confidence": int(parsed.get("confidence", 94)),
+                                        "severity": int(parsed.get("severity", 3)),
+                                        "detected_items": list(parsed.get("detected_items", ["Municipal waste accumulation"])),
+                                        "description": str(parsed.get("description", "Solid waste detected by Gemini Vision AI.")),
+                                        "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."))
+                                    }
+                except Exception as e:
+                    print(f"[Gemini REST API Warning with {model} (config={with_config})] {e}", flush=True)
 
         # 2. Try Google GenAI Python SDK if available
         try:
@@ -206,26 +220,26 @@ def run_gemini_waste_analysis(image_base64_str: str) -> dict:
             response = client.models.generate_content(
                 model='gemini-1.5-flash',
                 contents=[
-                    types.Part.from_bytes(data=img_bytes, mime_type="image/jpeg"),
+                    types.Part.from_bytes(data=img_bytes, mime_type=mime_type),
                     prompt
                 ]
             )
             if response and response.text:
-                raw_text = response.text.strip()
-                clean_json = re.sub(r"^```(json)?|```$", "", raw_text, flags=re.MULTILINE).strip()
-                parsed = json.loads(clean_json)
-                print(f"[Gemini SDK SUCCESS] Classified: {parsed.get('waste_type')}", flush=True)
-                return {
-                    "is_garbage": bool(parsed.get("is_garbage", True)),
-                    "waste_type": str(parsed.get("waste_type", "dry")).lower(),
-                    "confidence": int(parsed.get("confidence", 92)),
-                    "severity": int(parsed.get("severity", 3)),
-                    "detected_items": list(parsed.get("detected_items", ["Municipal waste accumulation"])),
-                    "description": str(parsed.get("description", "Solid waste detected by Gemini Vision AI.")),
-                    "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."))
-                }
+                json_match = re.search(r'\{.*\}', response.text.strip(), re.DOTALL)
+                if json_match:
+                    parsed = json.loads(json_match.group())
+                    print(f"[Gemini SDK SUCCESS] Classified: {parsed.get('waste_type')}", flush=True)
+                    return {
+                        "is_garbage": bool(parsed.get("is_garbage", True)),
+                        "waste_type": str(parsed.get("waste_type", "dry")).lower(),
+                        "confidence": int(parsed.get("confidence", 94)),
+                        "severity": int(parsed.get("severity", 3)),
+                        "detected_items": list(parsed.get("detected_items", ["Municipal waste accumulation"])),
+                        "description": str(parsed.get("description", "Solid waste detected by Gemini Vision AI.")),
+                        "verification_message": str(parsed.get("verification_message", "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."))
+                    }
         except Exception as ex2:
-            print(f"[Gemini SDK Warning] {ex2}. Using intelligent fallback heuristic.", flush=True)
+            print(f"[Gemini SDK Warning] {ex2}", flush=True)
 
     # Intelligent Heuristic Fallback
     b64_len = len(clean_b64)
