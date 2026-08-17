@@ -231,16 +231,18 @@ export async function submitReport(data: WasteReportPayload): Promise<ReportResp
   }
 }
 
-export async function fetchReports(): Promise<ReportResponse[]> {
-  return withFallback<ReportResponse[]>('/reports', MOCK_REPORTS);
+export async function fetchReports(citizenId?: string): Promise<ReportResponse[]> {
+  const path = citizenId ? `/reports?citizen_id=${encodeURIComponent(citizenId)}` : '/reports';
+  return withFallback<ReportResponse[]>(path, MOCK_REPORTS);
 }
 
 export async function fetchSchedule(): Promise<ScheduleDay[]> {
   return withFallback<ScheduleDay[]>('/schedule', MOCK_SCHEDULE);
 }
 
-export async function fetchRewards(): Promise<RewardProfile> {
-  return withFallback<RewardProfile>('/rewards', MOCK_REWARDS);
+export async function fetchRewards(citizenId?: string): Promise<RewardProfile> {
+  const path = citizenId ? `/rewards?citizen_id=${encodeURIComponent(citizenId)}` : '/rewards';
+  return withFallback<RewardProfile>(path, MOCK_REWARDS);
 }
 
 export async function fetchLeaderboard(): Promise<LeaderboardEntry[]> {

@@ -479,3 +479,71 @@ def assign_complaint_worker(ticket_id: str, payload: dict, db=Depends(get_db)):
 
     return {"status": "success", "ticket_id": ticket_id, "assigned_to": worker_name}
 
+
+@router.get("/leaves")
+def get_worker_leaves(worker_id: Optional[str] = "W-002", db=Depends(get_db)):
+    """Fetch leave records and balances for worker from MongoDB."""
+    history = []
+    if db is not None:
+        try:
+            cursor = db.worker_leaves.find({"worker_id": worker_id}, {"_id": 0}).sort("applied_at", -1)
+            history = list(cursor)
+        except Exception as e:
+            print("[Fetch Leaves Error]", e)
+
+    if not history:
+        history = [
+            {
+                "leave_id": "LV-2026-9041",
+                "worker_id": worker_id,
+                "worker_name": "Suresh Meshram",
+                "leave_type": "Casual Leave",
+                "start_date": "2026-08-20",
+                "end_date": "2026-08-21",
+                "reason": "Family function in Wardha",
+                "days": 2,
+                "status": "Approved",
+                "applied_at": "2026-08-14T10:30:00Z"
+            }
+        ]
+
+    return {
+        "status": "success",
+        "worker_id": worker_id,
+        "balance": {
+            "casual_leave_remaining": 8,
+            "sick_leave_remaining": 6,
+            "earned_leave_remaining": 14
+        },
+        "history": history
+    }
+
+
+@router.post("/leave")
+def apply_worker_leave(payload: dict, db=Depends(get_db)):
+    """Record a worker leave application in MongoDB."""
+    leave_id = payload.get("leave_id", f"LV-2026-{random.randint(1000, 9999)}")
+    record = {
+        "leave_id": leave_id,
+        "worker_id": payload.get("worker_id", "W-002"),
+        "worker_name": payload.get("worker_name", "Suresh Meshram"),
+        "leave_type": payload.get("leave_type", "Casual Leave"),
+        "start_date": payload.get("start_date", "2026-08-20"),
+        "end_date": payload.get("end_date", "2026-08-21"),
+        "reason": payload.get("reason", "Personal"),
+        "days": payload.get("days", 1),
+        "status": "Pending Approval",
+        "applied_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    if db is not None:
+        try:
+            db.worker_leaves.insert_one(record)
+        except Exception as e:
+            print("[Apply Leave Error]", e)
+
+    # Clean response (remove _id if added by mongo)
+    record.pop("_id", None)
+    return {"status": "success", "message": "Leave application submitted", "leave": record}
+
+

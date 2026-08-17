@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { ReportResponse } from '../types/citizen.types';
 import { fetchReports } from '../api/citizenApi';
+import { useAuth } from '../../../context/AuthContext';
 
 const wasteTypeIcons: Record<string, string> = {
   wet: '🥬',
@@ -44,6 +45,7 @@ const statusBadges: Record<string, { label: string; bg: string; border: string; 
 };
 
 export const MyComplaints: React.FC = () => {
+  const { user } = useAuth();
   const [reports, setReports] = useState<ReportResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export const MyComplaints: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchReports();
+      const data = await fetchReports(user?.id);
       setReports(data);
       if (data.length > 0 && !selectedTicket) {
         setSelectedTicket(data[0]);
@@ -77,7 +79,7 @@ export const MyComplaints: React.FC = () => {
 
   useEffect(() => {
     loadReports();
-  }, []);
+  }, [user?.id]);
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);

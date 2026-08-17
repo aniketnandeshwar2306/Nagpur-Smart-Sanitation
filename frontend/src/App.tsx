@@ -15,11 +15,15 @@ import CitizenDashboard from './modules/citizen/CitizenDashboard';
 import WorkerDashboard from './modules/worker/WorkerDashboard';
 import { INDIAN_LANGUAGES } from './utils/languages';
 import { LanguageProvider, useLanguage, type Language } from './context/LanguageContext';
+import { AuthProvider, useAuth, DEFAULT_USERS } from './context/AuthContext';
+import AuthModal from './components/AuthModal';
 
 const AppContent: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { setLanguage } = useLanguage();
+  const { user, updateUser } = useAuth();
+  const [isMobileAuthModalOpen, setIsMobileAuthModalOpen] = useState(false);
 
   // Always force Role Selection screen at starting route '/' or when role is not set
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(() => {
@@ -62,10 +66,13 @@ const AppContent: React.FC = () => {
     localStorage.setItem('nss_language', lang);
   };
 
-  // Select Role Action
+  // Select Role Action (Seamless 1-click portal switching with automatic user profile alignment)
   const handleSelectRole = (role: UserRole) => {
     setSelectedRole(role);
     localStorage.setItem('nagpur_clean_role', role);
+    if (user.role !== role) {
+      updateUser(DEFAULT_USERS[role]);
+    }
 
     // Navigate to default view for role
     if (role === 'citizen') navigate('/overview');
@@ -129,15 +136,24 @@ const AppContent: React.FC = () => {
       />
 
       {/* MOBILE TOP BAR (visible on screens under lg breakpoint) */}
+      <AuthModal
+        isOpen={isMobileAuthModalOpen}
+        onClose={() => setIsMobileAuthModalOpen(false)}
+        initialRole={selectedRole}
+      />
+
       <div className={`lg:hidden border-b p-4 flex items-center justify-between gap-3 sticky top-0 z-40 ${
         isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-[#E5E8E0]'
       }`}>
         <div className="flex items-center gap-2">
           <span className="text-xl">🌿</span>
           <span className="font-serif font-bold text-lg">NagpurClean</span>
-          <span className="text-xs font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-[#E3EBD8] text-[#2D5A3F]">
-            {selectedRole}
-          </span>
+          <button
+            onClick={() => setIsMobileAuthModalOpen(true)}
+            className="text-xs font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-[#E3EBD8] text-[#2D5A3F] cursor-pointer"
+          >
+            {selectedRole} • 👤
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -228,11 +244,13 @@ const AppContent: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <LanguageProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </LanguageProvider>
+    <AuthProvider>
+      <LanguageProvider>
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </LanguageProvider>
+    </AuthProvider>
   );
 };
 

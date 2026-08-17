@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { RewardProfile, LeaderboardEntry, RedeemableReward } from '../types/citizen.types';
 import { fetchRewards, fetchLeaderboard } from '../api/citizenApi';
+import { useAuth } from '../../../context/AuthContext';
 
 const TIER_CONFIG: Record<string, { icon: string; color: string; gradient: string }> = {
   Seed:     { icon: '🌰', color: 'text-amber-700',  gradient: 'from-amber-800 to-amber-600' },
@@ -29,6 +30,7 @@ const NAGPUR_WARDS: WardRanking[] = [
 ];
 
 const RewardsPanel: React.FC = () => {
+  const { user } = useAuth();
   const [rewards, setRewards] = useState<RewardProfile | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ const RewardsPanel: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [rew, lb] = await Promise.all([fetchRewards(), fetchLeaderboard()]);
+        const [rew, lb] = await Promise.all([fetchRewards(user?.id), fetchLeaderboard()]);
         setRewards(rew);
         setLeaderboard(lb);
       } catch (err) {
@@ -51,7 +53,7 @@ const RewardsPanel: React.FC = () => {
       }
     };
     load();
-  }, []);
+  }, [user?.id]);
 
   const handleRedeem = (item: RedeemableReward) => {
     if (!rewards || rewards.total_points < item.cost) return;

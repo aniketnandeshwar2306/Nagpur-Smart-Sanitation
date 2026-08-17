@@ -41,6 +41,8 @@ class WasteReportRequest(BaseModel):
     waste_type: str = Field(..., pattern="^(wet|dry|hazardous|e-waste|mixed)$")
     description: Optional[str] = Field(None, max_length=500)
     severity: Optional[int] = Field(3, ge=1, le=5)
+    citizen_id: Optional[str] = Field(None, description="Logged in citizen ID")
+    citizen_name: Optional[str] = Field(None, description="Citizen display name")
 
 class AssignedAuthority(BaseModel):
     name: str
@@ -58,6 +60,8 @@ class TimelineEvent(BaseModel):
 
 class WasteReportResponse(BaseModel):
     ticket_id: str
+    citizen_id: Optional[str] = None
+    citizen_name: Optional[str] = None
     status: str
     waste_type: str
     latitude: float
@@ -280,10 +284,14 @@ def submit_waste_report(payload: WasteReportRequest, db=Depends(get_db)):
     else:
         image_final = "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500&auto=format&fit=crop&q=60"
 
+    # Use logged in citizen ID or fallback to default
+    c_id = payload.citizen_id or "CIT-7819"
+    c_name = payload.citizen_name or "Aniket Nandeshwar"
+
     report_doc = {
         "ticket_id": ticket_id,
-        "citizen_id": "CIT-7819",
-        "citizen_name": "Aniket Nandeshwar",
+        "citizen_id": c_id,
+        "citizen_name": c_name,
         "status": "submitted",
         "waste_type": payload.waste_type,
         "latitude": payload.latitude,
@@ -308,10 +316,18 @@ def submit_waste_report(payload: WasteReportRequest, db=Depends(get_db)):
         ],
     }
 
-    db.complaints.insert_one(report_doc)
+    if db is not None:
+        db.complaints.insert_one(report_doc)
+        # Increment citizen reward points by 50 for reporting
+        try:
+            db.users.update_one({"id": c_id}, {"$inc": {"reward_points": 50}})
+        except Exception:
+            pass
 
     return WasteReportResponse(
         ticket_id=ticket_id,
+        citizen_id=c_id,
+        citizen_name=c_name,
         status="submitted",
         waste_type=payload.waste_type,
         latitude=payload.latitude,
@@ -329,9 +345,13 @@ def submit_waste_report(payload: WasteReportRequest, db=Depends(get_db)):
 
 
 @router.get("/reports", response_model=list[WasteReportResponse])
-def get_citizen_reports(db=Depends(get_db)):
-    """Fetch all complaints directly from MongoDB complaints collection in real time."""
-    cursor = db.complaints.find({}, {"_id": 0}).sort("created_at", -1)
+def get_citizen_reports(citizen_id: Optional[str] = None, db=Depends(get_db)):
+    """Fetch complaints from MongoDB. If citizen_id is supplied, returns only that citizen's reports."""
+    query = {}
+    if citizen_id:
+        query["citizen_id"] = citizen_id
+
+    cursor = db.complaints.find(query, {"_id": 0}).sort("created_at", -1) if db is not None else []
     reports = list(cursor)
 
     result = []
@@ -341,6 +361,8 @@ def get_citizen_reports(db=Depends(get_db)):
         result.append(
             WasteReportResponse(
                 ticket_id=r["ticket_id"],
+                citizen_id=r.get("citizen_id"),
+                citizen_name=r.get("citizen_name"),
                 status=r.get("status", "submitted"),
                 waste_type=r.get("waste_type", "mixed"),
                 latitude=r.get("latitude", 21.1458),
@@ -393,11 +415,13 @@ def get_weekly_schedule():
 
 
 @router.get("/rewards", response_model=RewardProfile)
-def get_citizen_rewards(db=Depends(get_db)):
-    """Calculate citizen GreenPoints dynamically based on real reports stored in MongoDB."""
-    user_reports_count = db.complaints.count_documents({"citizen_id": "CIT-7819"})
-    session_report_points = user_reports_count * 50
-    total_pts = 1250 + session_report_points
+def get_citizen_rewards(citizen_id: Optional[str] = None, db=Depends(get_db)):
+    """Calculate citizen GreenPoints dynamically based on user account in MongoDB."""
+    c_id = citizen_id or "CIT-7819"
+    user = db.users.find_one({"id": c_id}) if db is not None else None
+    user_reports_count = db.complaints.count_documents({"citizen_id": c_id}) if db is not None else 0
+    base_pts = user.get("reward_points", 1200) if user else 1200
+    total_pts = base_pts + (user_reports_count * 50)
 
     return RewardProfile(
         total_points=total_pts,

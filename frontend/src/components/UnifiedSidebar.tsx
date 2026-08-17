@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { UserRole } from '../views/RoleSelectionView';
 import { INDIAN_LANGUAGES, UI_TRANSLATIONS } from '../utils/languages';
+import { useAuth } from '../context/AuthContext';
+import AuthModal from './AuthModal';
 
 interface UnifiedSidebarProps {
   activeRole: UserRole;
@@ -24,6 +26,8 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   onLanguageChange,
 }) => {
   const t = UI_TRANSLATIONS[currentLang] || UI_TRANSLATIONS.en;
+  const { user } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Navigation items translated into selected Indian language
   const citizenItems = [
@@ -69,44 +73,61 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
     activeRole === 'admin' ? '🛡️' : '👷';
 
   return (
-    <aside className={`w-72 border-r min-h-screen p-5 flex flex-col justify-between hidden lg:flex shrink-0 transition-colors ${
-      isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-[#E5E8E0] text-[#1A2E22]'
-    }`}>
-      <div className="space-y-6">
-        {/* Brand Logo & Role Header */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 cursor-pointer" onClick={onSwitchRole}>
-              <div className="w-9 h-9 rounded-2xl bg-[#2D5A3F] text-white flex items-center justify-center text-lg font-bold shadow-sm">
-                🌿
+    <>
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialRole={activeRole}
+      />
+
+      <aside className={`w-72 border-r min-h-screen p-5 flex flex-col justify-between hidden lg:flex shrink-0 transition-colors ${
+        isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-[#E5E8E0] text-[#1A2E22]'
+      }`}>
+        <div className="space-y-6">
+          {/* Brand Logo & Role Header */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={onSwitchRole}>
+                <div className="w-9 h-9 rounded-2xl bg-[#2D5A3F] text-white flex items-center justify-center text-lg font-bold shadow-sm">
+                  🌿
+                </div>
+                <span className="text-xl font-serif font-bold tracking-tight">
+                  Nagpur<span className="text-[#2D5A3F] font-sans font-semibold text-lg">Clean</span>
+                </span>
               </div>
-              <span className="text-xl font-serif font-bold tracking-tight">
-                Nagpur<span className="text-[#2D5A3F] font-sans font-semibold text-lg">Clean</span>
+
+              {/* Switch Role Button */}
+              <button
+                onClick={onSwitchRole}
+                className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#E3EBD8] text-[#2D5A3F] hover:bg-[#D0DFCA] transition-colors flex items-center gap-1 cursor-pointer"
+                title={t.switchRole}
+              >
+                <span>🔄</span>
+                <span>{t.switchRole}</span>
+              </button>
+            </div>
+
+            {/* Active Role & User Profile Card */}
+            <div
+              onClick={() => setIsAuthModalOpen(true)}
+              className={`p-3 rounded-2xl border flex items-center justify-between gap-2 cursor-pointer transition-all hover:scale-[1.01] hover:shadow-xs ${
+                isDarkMode ? 'bg-slate-800/80 border-slate-700 hover:bg-slate-800' : 'bg-[#F5F5F0] border-[#E5E8E0] hover:bg-[#EBF0E6]'
+              }`}
+              title="Click to view profile / switch account"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-xl shrink-0">{roleIcon}</span>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#2D5A3F]">{roleTitle}</div>
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{user.name}</div>
+                  <div className="text-[10px] text-[#5C6B61] dark:text-slate-400 font-mono truncate">{user.id}</div>
+                </div>
+              </div>
+              <span className="text-xs text-slate-400 font-bold bg-white/60 dark:bg-slate-700 px-2 py-0.5 rounded-full shrink-0">
+                👤 Edit
               </span>
             </div>
-
-            {/* Switch Role Button */}
-            <button
-              onClick={onSwitchRole}
-              className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[#E3EBD8] text-[#2D5A3F] hover:bg-[#D0DFCA] transition-colors flex items-center gap-1 cursor-pointer"
-              title={t.switchRole}
-            >
-              <span>🔄</span>
-              <span>{t.switchRole}</span>
-            </button>
           </div>
-
-          {/* Active Role Badge */}
-          <div className={`p-3 rounded-2xl border flex items-center gap-3 ${
-            isDarkMode ? 'bg-slate-800/80 border-slate-700' : 'bg-[#F5F5F0] border-[#E5E8E0]'
-          }`}>
-            <span className="text-2xl">{roleIcon}</span>
-            <div>
-              <div className="text-xs font-extrabold uppercase tracking-wider text-[#2D5A3F]">{roleTitle}</div>
-              <div className="text-[11px] text-[#5C6B61] dark:text-slate-400 font-medium">Nagpur Sanitation Hub</div>
-            </div>
-          </div>
-        </div>
 
         {/* Vertical Navigation Links */}
         <nav className="space-y-1.5">
@@ -194,6 +215,7 @@ export const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
         </div>
       </div>
     </aside>
+  </>
   );
 };
 

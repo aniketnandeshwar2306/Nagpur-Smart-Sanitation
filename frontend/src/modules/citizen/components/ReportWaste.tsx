@@ -2,6 +2,7 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import type { WasteReportPayload } from '../types/citizen.types';
 import { submitReport } from '../api/citizenApi';
 import { API_BASE_URL } from '../../../config/api';
+import { useAuth } from '../../../context/AuthContext';
 
 type WasteType = WasteReportPayload['waste_type'];
 
@@ -19,6 +20,7 @@ const WASTE_TYPES: { value: WasteType; label: string; icon: string; color: strin
 ];
 
 const ReportWaste: React.FC = () => {
+  const { user } = useAuth();
   // State machine: 'camera' → 'form' → 'submitting' → 'success'
   const [step, setStep] = useState<'camera' | 'form' | 'submitting' | 'success'>('camera');
 
@@ -293,6 +295,8 @@ const ReportWaste: React.FC = () => {
         waste_type: wasteType,
         severity,
         description: description.trim() || undefined,
+        citizen_id: user?.id || 'CIT-7819',
+        citizen_name: user?.name || 'Aniket Nandeshwar',
       };
       const response = await submitReport(payload);
       // Dispatch global event for instantaneous reactive refresh across app

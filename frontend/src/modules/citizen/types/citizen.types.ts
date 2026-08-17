@@ -10,6 +10,8 @@ export interface WasteReportPayload {
   waste_type: 'wet' | 'dry' | 'hazardous' | 'e-waste' | 'mixed';
   description?: string;
   severity?: number;
+  citizen_id?: string;
+  citizen_name?: string;
 }
 
 export interface AssignedAuthority {
@@ -31,6 +33,8 @@ export interface TimelineEvent {
 
 export interface ReportResponse {
   ticket_id: string;
+  citizen_id?: string;
+  citizen_name?: string;
   status: 'submitted' | 'in_progress' | 'resolved';
   waste_type: string;
   latitude: number;
