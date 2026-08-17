@@ -132,15 +132,15 @@ export const SegregationModal: React.FC<SegregationModalProps> = ({
 
     try {
       setAnalysisStep('Uploading frame & preprocessing image matrix...');
-      await new Promise(r => setTimeout(r, 350));
+      await new Promise(r => setTimeout(r, 300));
 
-      setAnalysisStep('Querying Google Gemini 3.6 Flash Vision AI...');
-      await new Promise(r => setTimeout(r, 450));
+      setAnalysisStep('Querying Google Gemini Vision AI (Multi-Model Cascade)...');
+      await new Promise(r => setTimeout(r, 400));
 
       setAnalysisStep('Computing Wet/Dry/Hazardous segregation purity scores...');
-      await new Promise(r => setTimeout(r, 350));
+      await new Promise(r => setTimeout(r, 300));
 
-      const res = await workerApi.verifySegregation(fileToUpload, task?.id, task?.category);
+      const res = await workerApi.verifySegregation(fileToUpload, task?.id, task?.waste_type);
       setResult(res);
     } catch (err) {
       console.error('AI verification failed:', err);
