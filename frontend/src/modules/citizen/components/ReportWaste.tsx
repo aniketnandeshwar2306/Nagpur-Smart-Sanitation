@@ -154,11 +154,115 @@ const ReportWaste: React.FC = () => {
     return () => clearInterval(timer);
   }, [isRecordingVoice]);
 
-  // Run AI Vision Classifier with backend Gemini endpoint
+  // Helper to extract raw base64 and mime
+  const parseBase64 = (b64: string) => {
+    let mime = 'image/jpeg';
+    let data = b64.trim();
+    if (data.includes(',')) {
+      const parts = data.split(',');
+      const match = parts[0].match(/:(.*?);/);
+      if (match) mime = match[1];
+      data = parts[1];
+    }
+    return { mime, data };
+  };
+
+  // Run AI Vision Classifier (Direct Google Gemini AI with Backend Fallback)
   const runAiDetector = useCallback(async (imageB64: string) => {
     setIsAiScanning(true);
+    const customKey = localStorage.getItem('nss_gemini_api_key')?.trim();
+
+    // 1. If user configured Gemini API Key, call Google Gemini Vision DIRECTLY from browser
+    if (customKey) {
+      try {
+        const { mime, data } = parseBase64(imageB64);
+        const prompt = `You are an AI municipal solid waste inspector for Nagpur Municipal Corporation (NMC).
+Analyze this photo and return a strict JSON object with this EXACT schema:
+{
+  "is_garbage": true or false,
+  "waste_type": "wet" | "dry" | "hazardous" | "e-waste" | "mixed" | "none",
+  "confidence": 98,
+  "severity": 1,
+  "detected_items": ["item1", "item2"],
+  "description": "Short 1-sentence description",
+  "verification_message": "Inspection message"
+}
+
+CRITICAL RULES:
+1. If the photo contains a PERSON, SELFIE, HUMAN FACE, BODY, PET, LIVING ROOM, CAR, OR ANY NON-GARBAGE SUBJECT:
+   - "is_garbage": false
+   - "waste_type": "none"
+   - "confidence": 98
+   - "severity": 1
+   - "detected_items": ["Person / Human Subject / Non-waste Image"]
+   - "description": "Personal photo or non-waste subject detected."
+   - "verification_message": "This photo contains a person or non-waste subject and does not appear to be a municipal garbage incident."
+
+2. If the photo shows SOLID MUNICIPAL WASTE, STREET LITTER, PLASTIC DUMPS, FOOD WASTE, DEBRIS, OR OVERFLOWING BINS:
+   - "is_garbage": true
+   - "waste_type": "wet" | "dry" | "hazardous" | "e-waste" | "mixed"
+   - "confidence": 85 to 99
+   - "severity": 1 to 5
+   - "detected_items": list of 2-4 waste items
+   - "description": concise description of the solid waste
+   - "verification_message": "Verified municipal waste incident by Nagpur SmartSanitation AI Engine."
+
+Return ONLY a valid JSON object.`;
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${customKey}`;
+        const body = {
+          contents: [{
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: mime,
+                  data: data,
+                },
+              },
+            ],
+          }],
+          generationConfig: {
+            response_mime_type: 'application/json',
+          },
+        };
+
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (res.ok) {
+          const resData = await res.json();
+          const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (rawText) {
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const parsed = JSON.parse(jsonMatch[0]);
+              setAiAnalysisResult(parsed);
+              if (parsed.is_garbage) {
+                const cat = ['wet', 'dry', 'hazardous', 'e-waste', 'mixed'].includes(parsed.waste_type)
+                  ? (parsed.waste_type as WasteType)
+                  : 'dry';
+                setWasteType(cat);
+                setSeverity(parsed.severity || 3);
+                if (parsed.description) {
+                  setDescription(prev => prev ? prev : parsed.description);
+                }
+              }
+              setIsAiScanning(false);
+              return;
+            }
+          }
+        }
+      } catch (clientErr) {
+        console.warn('[Direct Gemini API Warning]', clientErr);
+      }
+    }
+
+    // 2. Fallback to backend API
     try {
-      const customKey = localStorage.getItem('nss_gemini_api_key') || undefined;
       const res = await fetch(`${API_BASE_URL}/api/citizen/analyze-image`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -177,6 +281,8 @@ const ReportWaste: React.FC = () => {
             setDescription(prev => prev ? prev : data.description);
           }
         }
+      } else {
+        throw new Error('Backend classification error');
       }
     } catch (e) {
       console.warn('AI analysis fallback:', e);
