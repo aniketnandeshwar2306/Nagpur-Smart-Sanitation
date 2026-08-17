@@ -240,6 +240,7 @@ Return ONLY a valid JSON object.`;
             const jsonMatch = rawText.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
               const parsed = JSON.parse(jsonMatch[0]);
+              console.log('[Direct Gemini AI] Result:', parsed.is_garbage ? 'GARBAGE' : 'NOT GARBAGE', parsed.waste_type);
               setAiAnalysisResult(parsed);
               if (parsed.is_garbage) {
                 const cat = ['wet', 'dry', 'hazardous', 'e-waste', 'mixed'].includes(parsed.waste_type)
@@ -253,6 +254,41 @@ Return ONLY a valid JSON object.`;
               }
               setIsAiScanning(false);
               return;
+            }
+          }
+        } else {
+          const errBody = await res.text();
+          console.warn('[Direct Gemini API] Non-200 response:', res.status, errBody);
+          // Retry without generationConfig (some models don't support it)
+          const retryBody = { ...body };
+          delete (retryBody as Record<string, unknown>).generationConfig;
+          const retryRes = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(retryBody),
+          });
+          if (retryRes.ok) {
+            const retryData = await retryRes.json();
+            const retryRaw = retryData.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (retryRaw) {
+              const retryMatch = retryRaw.match(/\{[\s\S]*\}/);
+              if (retryMatch) {
+                const parsed = JSON.parse(retryMatch[0]);
+                console.log('[Direct Gemini AI Retry] Result:', parsed.is_garbage ? 'GARBAGE' : 'NOT GARBAGE', parsed.waste_type);
+                setAiAnalysisResult(parsed);
+                if (parsed.is_garbage) {
+                  const cat = ['wet', 'dry', 'hazardous', 'e-waste', 'mixed'].includes(parsed.waste_type)
+                    ? (parsed.waste_type as WasteType)
+                    : 'dry';
+                  setWasteType(cat);
+                  setSeverity(parsed.severity || 3);
+                  if (parsed.description) {
+                    setDescription(prev => prev ? prev : parsed.description);
+                  }
+                }
+                setIsAiScanning(false);
+                return;
+              }
             }
           }
         }
@@ -270,28 +306,6 @@ Return ONLY a valid JSON object.`;
       });
       if (res.ok) {
         const data = await res.json();
-
-        // Strict guard against stale/cached backend mock text
-        const isStaleMock = [
-          'Biodegradable organic household waste detected',
-          'Potentially hazardous materials detected',
-          'Dry recyclable packaging & plastic litter detected',
-          'Accumulation of mixed municipal waste requiring immediate pickup',
-          'E-Waste components detected'
-        ].some(mockStr => data.description?.includes(mockStr));
-
-        if (isStaleMock) {
-          setAiAnalysisResult({
-            is_garbage: false,
-            waste_type: 'none',
-            confidence: 70,
-            severity: 1,
-            detected_items: ['Manual Selection Required'],
-            description: 'Photo uploaded. Please select the waste category below.',
-            verification_message: 'Please review and select the appropriate waste category below.',
-          });
-          return;
-        }
 
         setAiAnalysisResult(data);
         if (data.is_garbage) {
